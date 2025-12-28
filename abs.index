@@ -79,13 +79,13 @@
         .btn-fix-new { background: var(--accent-blue); font-size: 9px; font-weight: bold; height: 35px; }
         .btn-save-key { background: #28a745; font-size: 9px; font-weight: bold; height: 35px; }
         
-        /* MODIFICAÇÃO: BOTÃO HISTÓRICO PRETO COM FONTE BRANCA E BORDA VERMELHA */
+        /* BOTÃO HISTÓRICO PRETO COM FONTE BRANCA E BORDA VERMELHA */
         .btn-hist-key { background: #000 !important; color: #fff !important; border: 2px solid #ff0000 !important; font-size: 9px; font-weight: bold; height: 35px; }
 
         .expanded-actions { display: none; gap: 5px; margin-top: 10px; }
         .btn-save { flex: 1; background: #28a745; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
         
-        /* MODIFICAÇÃO: BOTÃO HISTÓRICO EXPANDIDO TAMBÉM PRETO/VERMELHO */
+        /* BOTÃO HISTÓRICO EXPANDIDO */
         .btn-view { flex: 1; background: #000 !important; color: #fff !important; border: 2px solid #ff0000 !important; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
         
         #back-container { display: none; padding: 10px; text-align: center; }
@@ -280,7 +280,6 @@
             }
         }
 
-        // MODIFICAÇÃO: SALVANDO 100% DOS DADOS DA TELA EXPANDIDA
         function saveToHistory() {
             if (document.getElementById('v1').innerText === "--") { alert("Calcule um resultado antes de salvar!"); return; }
             const date = new Date().toLocaleString();
@@ -348,7 +347,6 @@
 
         function clearHistory() { if(confirm("Apagar histórico?")) { localStorage.removeItem('calc_history'); viewHistory(); } }
 
-        // MODIFICAÇÃO: GERAÇÃO DE PDF PROFISSIONAL COM TODOS OS DADOS
         async function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -363,7 +361,6 @@
             history.forEach((item, index) => {
                 if(y > 250) { doc.addPage(); y = 20; }
                 
-                // Cabeçalho do Jogo
                 doc.setFillColor(240, 240, 240);
                 doc.rect(10, y, 190, 8, "F");
                 doc.setFontSize(10);
@@ -371,7 +368,6 @@
                 doc.text(`${item.date} - ${item.teams}`, 12, y + 6);
                 y += 12;
 
-                // Linha 1: Vitória e Dupla Chance
                 doc.setFontSize(8);
                 doc.setFont("helvetica", "bold"); doc.text("VITÓRIA:", 12, y); doc.setFont("helvetica", "normal");
                 doc.text(`1:${item.v1} | X:${item.vx} | 2:${item.v2}`, 35, y);
@@ -380,7 +376,6 @@
                 doc.text(`1X:${item.dc1x} | 12:${item.dc12} | X2:${item.dcx2}`, 140, y);
                 y += 6;
 
-                // Linha 2: Gols e Ambas
                 doc.setFont("helvetica", "bold"); doc.text("GOLS:", 12, y); doc.setFont("helvetica", "normal");
                 doc.text(`AMBAS S:${item.ams} N:${item.amn} | OV2.5:${item.ov25} | UN3.5:${item.un35}`, 35, y);
                 
@@ -388,7 +383,6 @@
                 doc.text(`PARTIDA: ${item.mpart} | PLACAR: ${item.rplacar}`, 140, y);
                 y += 6;
 
-                // Linha 3: Cantos e Regras
                 doc.setFont("helvetica", "bold"); doc.text("CANTOS:", 12, y); doc.setFont("helvetica", "normal");
                 doc.text(`${item.cantos} [${item.detalheCantos}]`, 35, y);
                 
@@ -396,7 +390,6 @@
                 doc.text(`R3: ${item.r3} | KCOM: ${item.kcom}`, 140, y);
                 y += 6;
 
-                // Linha 4: Sugestões
                 doc.setFont("helvetica", "bold"); doc.setTextColor(255, 100, 0);
                 doc.text("SUGESTÕES:", 12, y); doc.setFont("helvetica", "normal");
                 doc.text(`${item.sug1} | ${item.sug2} | ${item.sug3}`, 35, y);
