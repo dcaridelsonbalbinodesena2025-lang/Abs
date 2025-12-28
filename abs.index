@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -27,13 +27,14 @@
         .calc-wrapper { background-color: var(--bg-color); color: var(--text-color); font-family: 'Arial Black', Gadget, sans-serif; display: flex; flex-direction: column; text-transform: uppercase; padding: 2px 9px; }
         .app-header { text-align: center; padding-bottom: 10px; font-size: 20px; font-weight: 900; color: #0044ff; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 0px 3px #fff; letter-spacing: 1px; }
         
-        #display-container { height: 380px; padding: 7px 15px; display: flex; flex-direction: column; justify-content: flex-start; overflow-y: auto; border: 2px solid #333; border-radius: 10px; background: #050505; margin-bottom: 5px; transition: all 0.3s ease; }
-        #display-container.expanded { height: 60vh !important; border-color: var(--accent-blue); box-shadow: 0 0 20px var(--accent-blue); }
+        /* MODIFICAÇÃO: ALTURA DO VISOR AUMENTADA */
+        #display-container { height: 480px; padding: 7px 15px; display: flex; flex-direction: column; justify-content: flex-start; overflow-y: auto; border: 2px solid #333; border-radius: 10px; background: #050505; margin-bottom: 5px; transition: all 0.3s ease; }
+        #display-container.expanded { height: 65vh !important; border-color: var(--accent-blue); box-shadow: 0 0 20px var(--accent-blue); }
         
         .teams-header { display: none; text-align: center; font-size: 11px; margin-bottom: 8px; padding: 3px; border-bottom: 1px solid #222; color: #00ff00; opacity: 0.9; }
         #display-container.expanded .teams-header { display: block; }
 
-        .market-section { font-size: 13px; line-height: 1.3; font-family: 'Courier New', monospace; }
+        .market-section { font-size: 14px; line-height: 1.3; font-family: 'Courier New', monospace; }
         .section-title { text-align: center; margin: 20px 0 2px 0; letter-spacing: 1px; color: yellow; font-size: 11px; }
         .market-row { margin: 0px 0; display: flex; flex-wrap: wrap; border-bottom: 1px solid #111; padding-bottom: 2px; align-items: center; }
         .label { font-weight: bold; }
@@ -68,7 +69,6 @@
         #paste-area { display: none; flex-direction: column; gap: 5px; }
         .auto-textarea { height: 90px; background: #000; color: #0f0; border: 1px solid #444; padding: 5px; font-family: monospace; font-size: 11px; resize: none; }
         
-        /* Botão Limpar Dados Colados */
         .btn-clear-paste { width: 100%; height: 35px; background: #ff3b30; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 10px; cursor: pointer; margin-top: 5px; text-transform: uppercase; }
 
         #keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 400px; margin: 0 auto; }
@@ -78,11 +78,15 @@
         
         .btn-fix-new { background: var(--accent-blue); font-size: 9px; font-weight: bold; height: 35px; }
         .btn-save-key { background: #28a745; font-size: 9px; font-weight: bold; height: 35px; }
-        .btn-hist-key { background: #ff9500; font-size: 9px; font-weight: bold; height: 35px; }
+        
+        /* MODIFICAÇÃO: BOTÃO HISTÓRICO PRETO COM FONTE BRANCA E BORDA VERMELHA */
+        .btn-hist-key { background: #000 !important; color: #fff !important; border: 2px solid #ff0000 !important; font-size: 9px; font-weight: bold; height: 35px; }
 
         .expanded-actions { display: none; gap: 5px; margin-top: 10px; }
         .btn-save { flex: 1; background: #28a745; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
-        .btn-view { flex: 1; background: #ff9500; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
+        
+        /* MODIFICAÇÃO: BOTÃO HISTÓRICO EXPANDIDO TAMBÉM PRETO/VERMELHO */
+        .btn-view { flex: 1; background: #000 !important; color: #fff !important; border: 2px solid #ff0000 !important; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
         
         #back-container { display: none; padding: 10px; text-align: center; }
         #back-container.show { display: block; }
@@ -276,22 +280,41 @@
             }
         }
 
+        // MODIFICAÇÃO: SALVANDO 100% DOS DADOS DA TELA EXPANDIDA
         function saveToHistory() {
             if (document.getElementById('v1').innerText === "--") { alert("Calcule um resultado antes de salvar!"); return; }
             const date = new Date().toLocaleString();
             const teams = document.getElementById('team-name-display').innerText;
             const data = {
                 date, teams,
-                v1: document.getElementById('v1').innerText, vx: document.getElementById('vx').innerText, v2: document.getElementById('v2').innerText,
-                dc: document.getElementById('dc1x').innerText, ams: document.getElementById('am_s').innerText,
-                ov25: document.getElementById('ov25').innerText, r3: document.getElementById('r3_box').innerText, kcom: document.getElementById('kcom_box').innerText,
+                v1: document.getElementById('v1').innerText, 
+                vx: document.getElementById('vx').innerText, 
+                v2: document.getElementById('v2').innerText,
+                dc1x: document.getElementById('dc1x').innerText, 
+                dc12: document.getElementById('dc12').innerText, 
+                dcx2: document.getElementById('dcx2').innerText,
+                ams: document.getElementById('am_s').innerText,
+                amn: document.getElementById('am_n').innerText,
+                ov05: document.getElementById('ov05').innerText,
+                ov15: document.getElementById('ov15').innerText,
+                ov25: document.getElementById('ov25').innerText,
+                un35: document.getElementById('un35').innerText,
+                hts: document.getElementById('ht_s').innerText,
+                htn: document.getElementById('ht_n').innerText,
+                mpart: document.getElementById('m_part').innerText,
+                rplacar: document.getElementById('r_placar').innerText,
+                r3: document.getElementById('r3_box').innerText, 
+                kcom: document.getElementById('kcom_box').innerText,
                 cantos: document.getElementById('proj_cantos').innerText,
-                detalheCantos: document.getElementById('proj_times_cantos').innerText
+                detalheCantos: document.getElementById('proj_times_cantos').innerText,
+                sug1: document.getElementById('sug1').innerText,
+                sug2: document.getElementById('sug2').innerText,
+                sug3: document.getElementById('sug3').innerText
             };
             let history = JSON.parse(localStorage.getItem('calc_history') || "[]");
             history.unshift(data);
             localStorage.setItem('calc_history', JSON.stringify(history));
-            alert("✅ Resultado salvo!");
+            alert("✅ Resultado completo salvo!");
         }
 
         function viewHistory() {
@@ -301,10 +324,15 @@
             history.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'hist-item';
-                div.innerHTML = `<span class="hist-date">${item.date}</span><div class="hist-teams">${item.teams}</div>
-                V: 1:${item.v1}|X:${item.vx}|2:${item.v2}<br>AMBAS: ${item.ams} | OVER 2.5: ${item.ov25}<br>
-                CANTOS: ${item.cantos} (${item.detalheCantos})<br>
-                R3: ${item.r3}<br>KCOM: ${item.kcom}`;
+                div.innerHTML = `
+                <span class="hist-date">${item.date}</span>
+                <div class="hist-teams">${item.teams}</div>
+                <b>V:</b> 1:${item.v1}|X:${item.vx}|2:${item.v2}<br>
+                <b>DC:</b> 1X:${item.dc1x}|12:${item.dc12}|X2:${item.dcx2}<br>
+                <b>AMBAS:</b> S:${item.ams}|N:${item.amn} | <b>OV 2.5:</b> ${item.ov25}<br>
+                <b>CANTOS:</b> ${item.cantos}<br>
+                <b>R3:</b> ${item.r3} | <b>KCOM:</b> ${item.kcom}<br>
+                <b>SUG:</b> ${item.sug1} / ${item.sug2}`;
                 container.appendChild(div);
             });
             document.getElementById('aba_calc').style.display = 'none';
@@ -315,24 +343,72 @@
         function closeHistory() {
             document.getElementById('aba_hist').style.display = 'none';
             document.getElementById('aba_calc').style.display = 'block';
-            document.getElementById('main-nav').style.display = 'none'; /* Mantendo oculto */
+            document.getElementById('main-nav').style.display = 'none'; 
         }
 
         function clearHistory() { if(confirm("Apagar histórico?")) { localStorage.removeItem('calc_history'); viewHistory(); } }
 
+        // MODIFICAÇÃO: GERAÇÃO DE PDF PROFISSIONAL COM TODOS OS DADOS
         async function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const history = JSON.parse(localStorage.getItem('calc_history') || "[]");
-            doc.text("HISTÓRICO K.COM", 10, 10);
-            let y = 20;
-            history.forEach(item => {
-                if(y>270){doc.addPage(); y=20;}
-                doc.setFontSize(8); doc.text(`${item.date} - ${item.teams}`, 10, y);
-                y+=5; doc.text(`CANTOS: ${item.cantos} [${item.detalheCantos}] | R3: ${item.r3}`, 10, y);
-                y+=10;
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(0, 68, 255);
+            doc.text("RELATÓRIO ESTATÍSTICO K.COM", 105, 15, { align: "center" });
+            
+            let y = 25;
+            history.forEach((item, index) => {
+                if(y > 250) { doc.addPage(); y = 20; }
+                
+                // Cabeçalho do Jogo
+                doc.setFillColor(240, 240, 240);
+                doc.rect(10, y, 190, 8, "F");
+                doc.setFontSize(10);
+                doc.setTextColor(0);
+                doc.text(`${item.date} - ${item.teams}`, 12, y + 6);
+                y += 12;
+
+                // Linha 1: Vitória e Dupla Chance
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold"); doc.text("VITÓRIA:", 12, y); doc.setFont("helvetica", "normal");
+                doc.text(`1:${item.v1} | X:${item.vx} | 2:${item.v2}`, 35, y);
+                
+                doc.setFont("helvetica", "bold"); doc.text("DUPLA CHANCE:", 110, y); doc.setFont("helvetica", "normal");
+                doc.text(`1X:${item.dc1x} | 12:${item.dc12} | X2:${item.dcx2}`, 140, y);
+                y += 6;
+
+                // Linha 2: Gols e Ambas
+                doc.setFont("helvetica", "bold"); doc.text("GOLS:", 12, y); doc.setFont("helvetica", "normal");
+                doc.text(`AMBAS S:${item.ams} N:${item.amn} | OV2.5:${item.ov25} | UN3.5:${item.un35}`, 35, y);
+                
+                doc.setFont("helvetica", "bold"); doc.text("MÉDIAS:", 110, y); doc.setFont("helvetica", "normal");
+                doc.text(`PARTIDA: ${item.mpart} | PLACAR: ${item.rplacar}`, 140, y);
+                y += 6;
+
+                // Linha 3: Cantos e Regras
+                doc.setFont("helvetica", "bold"); doc.text("CANTOS:", 12, y); doc.setFont("helvetica", "normal");
+                doc.text(`${item.cantos} [${item.detalheCantos}]`, 35, y);
+                
+                doc.setFont("helvetica", "bold"); doc.text("REGRAS:", 110, y); doc.setFont("helvetica", "normal");
+                doc.text(`R3: ${item.r3} | KCOM: ${item.kcom}`, 140, y);
+                y += 6;
+
+                // Linha 4: Sugestões
+                doc.setFont("helvetica", "bold"); doc.setTextColor(255, 100, 0);
+                doc.text("SUGESTÕES:", 12, y); doc.setFont("helvetica", "normal");
+                doc.text(`${item.sug1} | ${item.sug2} | ${item.sug3}`, 35, y);
+                doc.setTextColor(0);
+                y += 10;
+                
+                doc.setDrawColor(200);
+                doc.line(10, y-2, 200, y-2);
+                y += 5;
             });
-            doc.save("historico.pdf");
+            
+            doc.save("Relatorio_KCOM.pdf");
         }
 
         function setMode(m) {
