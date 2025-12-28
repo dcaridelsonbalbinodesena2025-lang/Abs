@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Calculadora K.C⚽️M</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Estrutura de Abas */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* ABAS OCULTAS CONFORME SOLICITADO */
+        .tab-nav { display: none; } 
+        
+        .tab-btn { flex: 1; padding: 15px; border: none; background: #111; color: #666; font-weight: bold; font-size: 12px; text-transform: uppercase; cursor: pointer; }
+        .tab-btn.active { color: #fff; border-bottom: 3px solid #007aff; background: #222; }
+        .tab-pane { display: none; flex: 1; overflow-y: auto; height: 100%; }
+        .tab-pane.active { display: block; }
+
+        /* GUIA 1: CALCULADORA */
+        :root {
+            --bg-color: #000000; --text-color: #ffffff; --keypad-bg: #111111; --button-bg: #2a2a2a;
+            --accent-green: #00ff00; --accent-red: #ff3b30; --accent-orange: #ff9500; --accent-blue: #007aff;
+            --divider-color: #333; --amarelo: #FFFF00;
+        }
+        .calc-wrapper { background-color: var(--bg-color); color: var(--text-color); font-family: 'Arial Black', Gadget, sans-serif; display: flex; flex-direction: column; text-transform: uppercase; padding: 2px 9px; }
+        .app-header { text-align: center; padding-bottom: 10px; font-size: 20px; font-weight: 900; color: #0044ff; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 0px 3px #fff; letter-spacing: 1px; }
+        
+        #display-container { height: 380px; padding: 7px 15px; display: flex; flex-direction: column; justify-content: flex-start; overflow-y: auto; border: 2px solid #333; border-radius: 10px; background: #050505; margin-bottom: 5px; transition: all 0.3s ease; }
+        #display-container.expanded { height: 60vh !important; border-color: var(--accent-blue); box-shadow: 0 0 20px var(--accent-blue); }
+        
+        .teams-header { display: none; text-align: center; font-size: 11px; margin-bottom: 8px; padding: 3px; border-bottom: 1px solid #222; color: #00ff00; opacity: 0.9; }
+        #display-container.expanded .teams-header { display: block; }
+
+        .market-section { font-size: 13px; line-height: 1.3; font-family: 'Courier New', monospace; }
+        .section-title { text-align: center; margin: 20px 0 2px 0; letter-spacing: 1px; color: yellow; font-size: 11px; }
+        .market-row { margin: 0px 0; display: flex; flex-wrap: wrap; border-bottom: 1px solid #111; padding-bottom: 2px; align-items: center; }
+        .label { font-weight: bold; }
+        .value { color: var(--text-color); margin-left: 4px; font-weight: bold; padding: 0 4px; min-width: 20px; text-align: center; }
+        
+        .badge { padding: 4px 8px; font-weight: 700; border-radius: 5px; font-size: 11px; margin-top: 3px; min-width: 140px; text-align: center; display: inline-block; color: white; }
+        
+        .suggestions-section { display: none; }
+        #display-container.expanded .suggestions-section { display: block; }
+
+        .inputs { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 0; gap: 10px; background: #080808; border-top: 1px solid #222; margin-top: 8px; border-radius: 7px; }
+        .time-row { display: flex; justify-content: center; align-items: center; width: 80%; }
+        .time-label { font-weight: bold; font-size: 8px; min-width: 75px; text-align: left; }
+        .time-a { color: var(--accent-green); }
+        .time-b { color: var(--accent-red); }
+        .field-group { display: flex; align-items: center; margin: 0 6px; }
+        .field-label { font-size: 8px; color: #aaa; }
+        .inputs .value { font-size: 12px; min-width: 18px; margin: 0 4px; padding: 2px 2px; background: #1a1a1a; border-radius: 4px; }
+        .active-field { background-color: #ffffff !important; color: #000000 !important; }
+
+        #keypad-container { background: var(--keypad-bg); padding: 9px; border-top: 1px solid var(--divider-color); margin-top: 5px; border-radius: 5px; }
+        
+        .mode-selector { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn-mode { flex: 1; height: 35px; border: none; border-radius: 5px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; color: white; background: var(--accent-red); transition: 0.3s; }
+        .btn-mode.active { background: var(--accent-blue); border: 1px solid #fff; }
+
+        #auto-container { display: none; flex-direction: column; gap: 5px; height: 350px; }
+        .auto-nav { display: flex; gap: 5px; margin-bottom: 5px; }
+        .btn-sub { flex: 1; height: 30px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; }
+        #iframe-box { flex: 1; width: 100%; border: 1px solid #333; border-radius: 4px; background: #fff; }
+        
+        #paste-area { display: none; flex-direction: column; gap: 5px; }
+        .auto-textarea { height: 90px; background: #000; color: #0f0; border: 1px solid #444; padding: 5px; font-family: monospace; font-size: 11px; resize: none; }
+        
+        /* Botão Limpar Dados Colados */
+        .btn-clear-paste { width: 100%; height: 35px; background: #ff3b30; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 10px; cursor: pointer; margin-top: 5px; text-transform: uppercase; }
+
+        #keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 400px; margin: 0 auto; }
+        .calc-btn { background: var(--button-bg); border: none; color: white; height: 35px; font-size: 18px; border-radius: 4px; }
+        .btn-clear { background: var(--accent-red); font-size: 13px; font-weight: bold; }
+        .btn-enter { background: var(--accent-orange); font-size: 13px; }
+        
+        .btn-fix-new { background: var(--accent-blue); font-size: 9px; font-weight: bold; height: 35px; }
+        .btn-save-key { background: #28a745; font-size: 9px; font-weight: bold; height: 35px; }
+        .btn-hist-key { background: #ff9500; font-size: 9px; font-weight: bold; height: 35px; }
+
+        .expanded-actions { display: none; gap: 5px; margin-top: 10px; }
+        .btn-save { flex: 1; background: #28a745; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
+        .btn-view { flex: 1; background: #ff9500; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 5px; font-size: 10px; }
+        
+        #back-container { display: none; padding: 10px; text-align: center; }
+        #back-container.show { display: block; }
+        .btn-back { background: var(--accent-blue); border: none; color: white; height: 45px; font-size: 16px; font-weight: bold; border-radius: 8px; width: 100%; }
+        
+        #aba_hist { padding: 15px; background: #000; display: none; overflow-y: auto; height: 100%; }
+        .hist-item { background: #111; border: 1px solid #333; padding: 10px; margin-bottom: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; }
+        .hist-date { color: #007aff; font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #222; display: block; }
+        .hist-teams { color: #00ff00; font-size: 13px; margin-bottom: 5px; }
+        .hist-btn-row { display: flex; gap: 10px; margin-bottom: 20px; position: sticky; top: 0; background: #000; padding: 10px 0; z-index: 10; }
+        .btn-pdf { flex: 1; background: #d9534f; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; }
+
+        .conv-container { padding: 15px; background: #f0f2f5; color: #333; height: 100%; overflow-y: auto; }
+        .table-wrapper { margin-bottom: 20px; background: #fff; border: 1px solid #ddd; padding: 8px; border-radius: 8px; }
+        .main-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 5px; }
+        .main-table th { background: #007aff; color: white; padding: 5px; border: 1px solid #ddd; }
+        .main-table td { padding: 4px; border: 1px solid #ddd; text-align: center; }
+        .score-red { color: #d9534f; font-weight: bold; }
+        .team-label { background: #28a745; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 12px; margin-top: 8px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <nav class="tab-nav" id="main-nav">
+        <button class="tab-btn active" onclick="openTab(event, 'aba_calc')">Calculadora</button>
+        <button class="tab-btn" onclick="openTab(event, 'aba_conv')">Conversor</button>
+    </nav>
+
+    <div id="aba_calc" class="tab-pane active">
+        <div class="calc-wrapper">
+            <div class="app-header">CALCULADORA K.C⚽️M</div>
+            <div id="display-container">
+                <div id="teams-title" class="teams-header"><span id="team-name-display">--- VS ---</span></div>
+                <div class="market-section">
+                    <div class="section-title">---------- MERCADOS ----------</div>
+                    <div class="market-row"><span class="label">VITÓRIA:</span> 1:<span class="value" id="v1">--</span>|X:<span class="value" id="vx">--</span>|2:<span class="value" id="v2">--</span></div>
+                    <div class="market-row"><span class="label">DUPLA CHANCE:</span> 1X:<span class="value" id="dc1x">--</span>|12:<span class="value" id="dc12">--</span>|X2:<span class="value" id="dcx2">--</span></div>
+                    <div class="market-row"><span class="label">AMBAS MARCAM:</span> SIM:<span class="value" id="am_s">--</span>|NÃO:<span class="value" id="am_n">--</span></div>
+                    <div class="market-row"><span class="label">OVER:</span> 0.5:<span class="value" id="ov05">--</span>|1.5:<span class="value" id="ov15">--</span>|2.5:<span class="value" id="ov25">--</span></div>
+                    <div class="market-row"><span class="label">UNDER:</span> 3.5:<span class="value" id="un35">--</span>|4.5:<span class="value" id="un45">--</span>|5.5:<span class="value" id="un55">--</span></div>
+                    <div class="market-row"><span class="label">GOL HT:</span> SIM:<span class="value" id="ht_s">--</span>|NÃO:<span class="value" id="ht_n">--</span></div>
+                    <div class="market-row"><span class="label">MÉDIA GOL PARTIDA:</span> <span class="value" id="m_part">--</span></div>
+                    <div class="market-row"><span class="label">REGRA DE PLACAR 2.5 OVER:</span> <span class="value" id="r_placar">--</span></div>
+                    <div class="market-row"><span class="label" style="color: #007aff;">PROJEÇÃO TOTAL CANTOS:</span> <span class="value" id="proj_cantos" style="color: #007aff;">--</span></div>
+                    <div class="market-row"><span class="label" style="color: #007aff;">PROJEÇÃO CANTOS T.A / T.B:</span> <span class="value" id="proj_times_cantos" style="color: #007aff; font-size: 11px;">--</span></div>
+                    <div class="section-title suggestions-section">--------- SUGESTÕES ---------</div>
+                    <div class="market-row suggestions-section">1° SUG: <span class="value" id="sug1">--</span></div>
+                    <div class="market-row suggestions-section">2° SUG: <span class="value" id="sug2">--</span></div>
+                    <div class="market-row suggestions-section">3° SUG: <span class="value" id="sug3">--</span></div>
+                    <div class="section-title">----- REGRA 3 VS KMCOM -----</div>
+                    <div class="market-row"><span class="label">REGRA 3:</span> <span id="r3_box" class="badge">--</span></div>
+                    <div class="market-row"><span class="label">K.COM:</span> <span id="kcom_box" class="badge">--</span></div>
+                </div>
+                <div class="inputs" id="team-inputs">
+                    <div class="time-row time-a"><span class="time-label">TIME A</span><div class="field-group"><span class="field-label">JG:</span><span id="ta_jg" class="value active-field">--</span></div><div class="field-group"><span class="field-label">GP:</span><span id="ta_gp" class="value">--</span></div><div class="field-group"><span class="field-label">GC:</span><span id="ta_gc" class="value">--</span></div></div>
+                    <div class="time-row time-b"><span class="time-label">TIME B</span><div class="field-group"><span class="field-label">JG:</span><span id="tb_jg" class="value">--</span></div><div class="field-group"><span class="field-label">GP:</span><span id="tb_gp" class="value">--</span></div><div class="field-group"><span class="field-label">GC:</span><span id="tb_gc" class="value">--</span></div></div>
+                </div>
+            </div>
+
+            <div class="expanded-actions" id="expanded-actions">
+                <button class="btn-save" onclick="saveToHistory()">💾 SALVAR NO HISTÓRICO</button>
+                <button class="btn-view" onclick="viewHistory()">📂 VER HISTÓRICO</button>
+            </div>
+
+            <div id="keypad-container">
+                <div class="mode-selector">
+                    <button id="btn-manual" class="btn-mode active" onclick="setMode('manual')">Manual</button>
+                    <button id="btn-auto" class="btn-mode" onclick="setMode('auto')">Automático</button>
+                </div>
+                <div id="manual-area">
+                    <div id="keypad">
+                        <button class="calc-btn" onclick="press(7)">7</button><button class="calc-btn" onclick="press(8)">8</button><button class="calc-btn" onclick="press(9)">9</button>
+                        <button class="calc-btn" onclick="press(4)">4</button><button class="calc-btn" onclick="press(5)">5</button><button class="calc-btn" onclick="press(6)">6</button>
+                        <button class="calc-btn" onclick="press(1)">1</button><button class="calc-btn" onclick="press(2)">2</button><button class="calc-btn" onclick="press(3)">3</button>
+                        <button class="calc-btn btn-clear" onclick="clearAll()">LIMPAR</button><button class="calc-btn" onclick="press(0)">0</button>
+                        <button class="calc-btn btn-enter" onclick="nextField()">➔</button>
+                        <button class="calc-btn btn-fix-new" onclick="fixField()">CORRIGIR</button>
+                        <button class="calc-btn btn-save-key" onclick="saveToHistory()">SALVAR</button>
+                        <button class="calc-btn btn-hist-key" onclick="viewHistory()">HISTÓRICO</button>
+                    </div>
+                </div>
+                <div id="auto-container">
+                    <div class="auto-nav">
+                        <button class="btn-sub" onclick="showAutoContent('site')">Página NowGoal</button>
+                        <button class="btn-sub" onclick="showAutoContent('paste')">Colar Dados</button>
+                    </div>
+                    <iframe id="iframe-box" src="https://www.nowgoal.com"></iframe>
+                    <div id="paste-area">
+                        <textarea id="auto-input" class="auto-textarea" placeholder="Cole aqui os dados do NowGoal..."></textarea>
+                        <button class="btn-clear-paste" onclick="clearPasteArea()">LIMPAR DADOS</button>
+                    </div>
+                </div>
+            </div>
+            <div id="back-container"><button class="btn-back" onclick="goBackToCalculator()">← VOLTAR CALCULADORA</button></div>
+        </div>
+    </div>
+
+    <div id="aba_conv" class="tab-pane">
+        <div class="conv-container">
+            <div id="visualOutput">
+                <p style="text-align:center; margin-top:50px; color:#666;">Aguardando dados...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="aba_hist" class="tab-pane">
+        <div class="hist-btn-row">
+            <button class="btn-pdf" onclick="downloadPDF()">📄 BAIXAR PDF</button>
+            <button class="btn-back" style="flex:1" onclick="closeHistory()">🏠 VOLTAR</button>
+            <button class="btn-clear-hist" style="flex:0.5; background:#333; color:#fff; border-radius:5px;" onclick="clearHistory()">🗑️</button>
+        </div>
+        <div id="hist-list"></div>
+    </div>
+
+    <script>
+        const sequence = ['ta_jg', 'ta_gp', 'ta_gc', 'tb_jg', 'tb_gp', 'tb_gc'];
+        let currentIndex = 0, currentString = "", isExpanded = false, currentMode = 'manual';
+
+        function clearPasteArea() {
+            document.getElementById('auto-input').value = "";
+            document.getElementById('visualOutput').innerHTML = '<p style="text-align:center; margin-top:50px; color:#666;">Aguardando dados...</p>';
+        }
+
+        function calculateResults() {
+            const getV = (id) => {
+                const t = document.getElementById(id).innerText;
+                return (t === "--" || t === "") ? 0 : parseFloat(t);
+            };
+
+            const jA = getV('ta_jg'), gA = getV('ta_gp'), cA = getV('ta_gc');
+            const jB = getV('tb_jg'), gB = getV('tb_gp'), cB = getV('tb_gc');
+
+            if (jA > 0 && jB > 0) {
+                const atkA = gA / jA; const defA = cA / jA; 
+                const atkB = gB / jB; const defB = cB / jB; 
+                const medPartida = (atkA + defA + atkB + defB) / 2;
+                const somaRegra3 = (atkA + defA) + (atkB + defB);
+
+                const cantosTA = (atkA + defB) * 2.1;
+                const cantosTB = (atkB + defA) * 2.1;
+                const totalCantos = cantosTA + cantosTB;
+
+                document.getElementById('proj_cantos').innerText = Math.round(totalCantos) + " CANTOS";
+                document.getElementById('proj_times_cantos').innerText = "CASA: " + cantosTA.toFixed(1) + " | VISIT.: " + cantosTB.toFixed(1);
+
+                const nameDisplay = document.getElementById('team-name-display');
+                if (currentMode === 'manual') nameDisplay.innerText = "TIME A VS TIME B";
+
+                const kbox = document.getElementById('kcom_box');
+                if (medPartida < 2.00) { kbox.innerText = "4.5 UNDER GOL"; kbox.style.background = "#ff3b30"; kbox.style.color = "#fff"; }
+                else if (medPartida <= 2.29) { kbox.innerText = "POSSÍVEL 0.5 OVER GOL"; kbox.style.background = "#FFFF00"; kbox.style.color = "#000"; }
+                else if (medPartida <= 2.49) { kbox.innerText = "0.5 OVER GOL"; kbox.style.background = "#ADFF2F"; kbox.style.color = "#000"; }
+                else if (medPartida <= 2.89) { kbox.innerText = "POSSÍVEL 1.5 OVER GOL"; kbox.style.background = "#FFFF00"; kbox.style.color = "#000"; }
+                else if (medPartida <= 3.29) { kbox.innerText = "1.5 OVER GOL"; kbox.style.background = "#006400"; kbox.style.color = "#fff"; }
+                else { kbox.innerText = "2.5 OVER GOL"; kbox.style.background = "#00008B"; kbox.style.color = "#fff"; }
+
+                const r3box = document.getElementById('r3_box');
+                if (somaRegra3 < 4) { r3box.innerText = "4.5 UNDER GOL"; r3box.style.background = "#ff3b30"; r3box.style.color = "#fff"; }
+                else if (somaRegra3 < 6) { r3box.innerText = "0.5 OVER GOL"; r3box.style.background = "#ADFF2F"; r3box.style.color = "#000"; }
+                else if (somaRegra3 < 8) { r3box.innerText = "1.5 OVER GOL"; r3box.style.background = "#006400"; r3box.style.color = "#fff"; }
+                else { r3box.innerText = "2.5 OVER GOL"; r3box.style.background = "#00008B"; r3box.style.color = "#fff"; }
+
+                document.getElementById('v1').innerText = Math.round(((atkA+defB)/((atkA+defB)+(atkB+defA)+0.8))*100) + "%";
+                document.getElementById('v2').innerText = Math.round(((atkB+defA)/((atkA+defB)+(atkB+defA)+0.8))*100) + "%";
+                document.getElementById('vx').innerText = (100 - parseInt(document.getElementById('v1').innerText) - parseInt(document.getElementById('v2').innerText)) + "%";
+                document.getElementById('dc1x').innerText = (parseInt(document.getElementById('v1').innerText) + parseInt(document.getElementById('vx').innerText)) + "%";
+                document.getElementById('dc12').innerText = (parseInt(document.getElementById('v1').innerText) + parseInt(document.getElementById('v2').innerText)) + "%";
+                document.getElementById('dcx2').innerText = (parseInt(document.getElementById('vx').innerText) + parseInt(document.getElementById('v2').innerText)) + "%";
+                let ams = Math.min(85, Math.round(((atkA > 0.8 ? 35 : 10) + (atkB > 0.8 ? 35 : 10))));
+                document.getElementById('am_s').innerText = ams + "%"; document.getElementById('am_n').innerText = (100-ams) + "%";
+                document.getElementById('ov05').innerText = Math.min(99, Math.round(medPartida * 38)) + "%";
+                document.getElementById('ov15').innerText = Math.min(92, Math.round(medPartida * 30)) + "%";
+                document.getElementById('ov25').innerText = Math.min(85, Math.round(medPartida * 24)) + "%";
+                document.getElementById('un35').innerText = Math.max(5, 100 - Math.round(medPartida * 18)) + "%";
+                document.getElementById('un45').innerText = "94%"; document.getElementById('un55').innerText = "98%";
+                document.getElementById('ht_s').innerText = Math.min(85, Math.round(medPartida * 28)) + "%";
+                document.getElementById('ht_n').innerText = (100 - parseInt(document.getElementById('ht_s').innerText)) + "%";
+                document.getElementById('m_part').innerText = medPartida.toFixed(2);
+                document.getElementById('r_placar').innerText = somaRegra3.toFixed(2);
+                
+                document.getElementById('sug1').innerText = atkA > atkB ? "VITÓRIA CASA" : "DUPLA CHANCE";
+                document.getElementById('sug2').innerText = totalCantos > 9 ? "MAIS CANTOS CASA" : "UNDER 3.5 GOLS";
+                document.getElementById('sug3').innerText = totalCantos > 9.5 ? "OVER 8.5 ESCANTEIOS" : "GOL NO HT";
+
+                document.getElementById('team-inputs').style.display = 'none';
+                document.getElementById('display-container').classList.add('expanded');
+                document.getElementById('keypad-container').style.display = 'none';
+                document.getElementById('back-container').classList.add('show');
+                document.getElementById('expanded-actions').style.display = 'flex';
+                isExpanded = true;
+            }
+        }
+
+        function saveToHistory() {
+            if (document.getElementById('v1').innerText === "--") { alert("Calcule um resultado antes de salvar!"); return; }
+            const date = new Date().toLocaleString();
+            const teams = document.getElementById('team-name-display').innerText;
+            const data = {
+                date, teams,
+                v1: document.getElementById('v1').innerText, vx: document.getElementById('vx').innerText, v2: document.getElementById('v2').innerText,
+                dc: document.getElementById('dc1x').innerText, ams: document.getElementById('am_s').innerText,
+                ov25: document.getElementById('ov25').innerText, r3: document.getElementById('r3_box').innerText, kcom: document.getElementById('kcom_box').innerText,
+                cantos: document.getElementById('proj_cantos').innerText,
+                detalheCantos: document.getElementById('proj_times_cantos').innerText
+            };
+            let history = JSON.parse(localStorage.getItem('calc_history') || "[]");
+            history.unshift(data);
+            localStorage.setItem('calc_history', JSON.stringify(history));
+            alert("✅ Resultado salvo!");
+        }
+
+        function viewHistory() {
+            const history = JSON.parse(localStorage.getItem('calc_history') || "[]");
+            const container = document.getElementById('hist-list');
+            container.innerHTML = history.length === 0 ? "<p style='text-align:center; padding:20px'>Vazio</p>" : "";
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'hist-item';
+                div.innerHTML = `<span class="hist-date">${item.date}</span><div class="hist-teams">${item.teams}</div>
+                V: 1:${item.v1}|X:${item.vx}|2:${item.v2}<br>AMBAS: ${item.ams} | OVER 2.5: ${item.ov25}<br>
+                CANTOS: ${item.cantos} (${item.detalheCantos})<br>
+                R3: ${item.r3}<br>KCOM: ${item.kcom}`;
+                container.appendChild(div);
+            });
+            document.getElementById('aba_calc').style.display = 'none';
+            document.getElementById('main-nav').style.display = 'none';
+            document.getElementById('aba_hist').style.display = 'block';
+        }
+
+        function closeHistory() {
+            document.getElementById('aba_hist').style.display = 'none';
+            document.getElementById('aba_calc').style.display = 'block';
+            document.getElementById('main-nav').style.display = 'none'; /* Mantendo oculto */
+        }
+
+        function clearHistory() { if(confirm("Apagar histórico?")) { localStorage.removeItem('calc_history'); viewHistory(); } }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const history = JSON.parse(localStorage.getItem('calc_history') || "[]");
+            doc.text("HISTÓRICO K.COM", 10, 10);
+            let y = 20;
+            history.forEach(item => {
+                if(y>270){doc.addPage(); y=20;}
+                doc.setFontSize(8); doc.text(`${item.date} - ${item.teams}`, 10, y);
+                y+=5; doc.text(`CANTOS: ${item.cantos} [${item.detalheCantos}] | R3: ${item.r3}`, 10, y);
+                y+=10;
+            });
+            doc.save("historico.pdf");
+        }
+
+        function setMode(m) {
+            currentMode = m;
+            const btnM = document.getElementById('btn-manual');
+            const btnA = document.getElementById('btn-auto');
+            if(m === 'manual') {
+                btnM.classList.add('active'); btnA.classList.remove('active');
+                document.getElementById('manual-area').style.display = 'block';
+                document.getElementById('auto-container').style.display = 'none';
+            } else {
+                btnA.classList.add('active'); btnM.classList.remove('active');
+                document.getElementById('manual-area').style.display = 'none';
+                document.getElementById('auto-container').style.display = 'flex';
+            }
+        }
+
+        function press(num) { if (!isExpanded && currentString.length < 3) { currentString += num; updateDisplay(); } }
+        function nextField() { if (currentIndex === sequence.length - 1) calculateResults(); else { currentIndex++; currentString = ""; updateDisplay(); } }
+        function fixField() { currentString = ""; updateDisplay(); }
+        function updateDisplay() { sequence.forEach(id => document.getElementById(id).classList.remove('active-field')); const el = document.getElementById(sequence[currentIndex]); el.innerText = currentString === "" ? "--" : currentString; el.classList.add('active-field'); }
+        function clearAll() { location.reload(); }
+        function goBackToCalculator() { 
+            document.getElementById('display-container').classList.remove('expanded'); document.getElementById('keypad-container').style.display = 'block'; 
+            document.getElementById('back-container').classList.remove('show'); 
+            document.getElementById('expanded-actions').style.display = 'none';
+            document.getElementById('team-inputs').style.display = 'flex'; isExpanded = false; currentIndex = 0; currentString = ""; updateDisplay(); 
+        }
+        function openTab(evt, name) { const panes = document.getElementsByClassName("tab-pane"); const btns = document.getElementsByClassName("tab-btn"); for (let i = 0; i < panes.length; i++) panes[i].classList.remove("active"); for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active"); document.getElementById(name).classList.add("active"); evt.currentTarget.classList.add("active"); }
+        function showAutoContent(type) { document.getElementById('iframe-box').style.display = type === 'site' ? 'block' : 'none'; document.getElementById('paste-area').style.display = type === 'paste' ? 'flex' : 'none'; }
+
+        document.getElementById('auto-input').addEventListener('input', function() {
+            const text = this.value; if (!text.includes("Previous Scores Statistics")) return;
+            let bloc = text.split("Previous Scores Statistics")[1].split("Same Historical Odds Statistics")[0];
+            const lines = bloc.split('\n').filter(l => /\d{2}-\d{2}-\d{4}/.test(l));
+            let gamesFound = [];
+            lines.forEach(line => {
+                const dateMatch = line.match(/\d{2}-\d{2}-\d{4}/);
+                if (dateMatch) {
+                    const parts = line.split(dateMatch[0])[1].trim().split(/\t|\s{2,}/).filter(p => p.trim() !== "");
+                    if (parts.length >= 2) gamesFound.push({ home: parts[0], score: parts[1], away: parts[2]||"" });
+                }
+            });
+            if (gamesFound.length >= 11) {
+                const hTeam = getMostFrequent(gamesFound.slice(0, 10).map(g => g.home));
+                const aTeam = getMostFrequent(gamesFound.slice(10, 20).map(g => g.away));
+                document.getElementById('team-name-display').innerText = hTeam + " VS " + aTeam;
+                let jA=0, gA=0, cA=0, jB=0, gB=0, cB=0;
+                gamesFound.slice(0, 10).forEach(g => { if(g.home === hTeam) { const s = g.score.split('-').map(x=>parseInt(x)||0); jA++; gA+=s[0]; cA+=s[1]; }});
+                gamesFound.slice(10, 20).forEach(g => { if(g.away === aTeam) { const s = g.score.split('-').map(x=>parseInt(x)||0); jB++; gB+=s[1]; cB+=s[0]; }});
+                document.getElementById('ta_jg').innerText = jA; document.getElementById('ta_gp').innerText = gA; document.getElementById('ta_gc').innerText = cA;
+                document.getElementById('tb_jg').innerText = jB; document.getElementById('tb_gp').innerText = gB; document.getElementById('tb_gc').innerText = cB;
+                processNowGoalData(text); setTimeout(calculateResults, 300);
+            }
+        });
+
+        function getMostFrequent(arr) {
+            const counts = {}; let max = 0, res = "Time";
+            arr.forEach(x => { counts[x] = (counts[x]||0)+1; if(counts[x]>max){max=counts[x]; res=x;} });
+            return res;
+        }
+
+        function processNowGoalData(text) {
+            const output = document.getElementById('visualOutput');
+            let bloc = text.split("Previous Scores Statistics")[1].split("Same Historical Odds Statistics")[0];
+            const lines = bloc.split('\n').filter(l => /\d{2}-\d{2}-\d{4}/.test(l));
+            let gamesFound = [];
+            lines.forEach(line => {
+                const dateMatch = line.match(/\d{2}-\d{2}-\d{4}/);
+                if (dateMatch) {
+                    const parts = line.split(dateMatch[0])[1].trim().split(/\t|\s{2,}/).filter(p => p.trim() !== "");
+                    gamesFound.push({ date: dateMatch[0], home: parts[0], score: parts[1], away: parts[2], corner: parts[3]||"-" });
+                }
+            });
+            const hTeam = getMostFrequent(gamesFound.slice(0, 10).map(g => g.home));
+            const aTeam = getMostFrequent(gamesFound.slice(10, 20).map(g => g.away));
+            output.innerHTML = renderConvTable(hTeam, gamesFound.slice(0, 10), "MANDANTE") + renderConvTable(aTeam, gamesFound.slice(10, 20), "VISITANTE");
+        }
+
+        function renderConvTable(teamName, games, typeLabel) {
+            let rows = "";
+            games.forEach((g, i) => { rows += `<tr><td>${i+1}</td><td>${g.date}</td><td>${g.home}</td><td class="score-red">${g.score}</td><td>${g.away}</td><td>${g.corner}</td></tr>`; });
+            return `<div class="table-wrapper"><div style="font-weight:bold; color:#007aff; font-size:12px;">ESTATÍSTICAS ${typeLabel}</div><table class="main-table"><thead><tr><th>#</th><th>Data</th><th>Home</th><th>Score</th><th>Away</th><th>C</th></tr></thead><tbody>${rows}</tbody></table><div class="team-label">${teamName}</div></div>`;
+        }
+    </script>
+</body>
+</html>
