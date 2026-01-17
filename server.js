@@ -1,74 +1,76 @@
 const axios = require('axios');
 
-// CONFIGURAÇÕES
-const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI"; 
-const TG_CHAT_ID = "-1003355965894"; 
+const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI";
+const TG_CHAT_ID = "-1003355965894";
 const LINK_CORRETORA = "https://fwd.cx/m8xU812pB87p";
 
-let statsGlobal = { analises: 0, winDireto: 0, winGale1: 0, winGale2: 0, loss: 0 };
-let ativos = [
-    { nome: "EUR/USD (OTC)", id: "EURUSD-OTC", wins: 0, loss: 0 },
-    { nome: "GBP/USD (OTC)", id: "GBPUSD-OTC", wins: 0, loss: 0 }
+let statsGlobal = { wins: 0, loss: 0 };
+const ativosData = {};
+const listaAtivos = [
+    "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/GBP", "USD/CAD", "EUR/JPY",
+    "EUR/USD-OTC", "GBP/USD-OTC", "USD/JPY-OTC", "AUD/USD-OTC", 
+    "EUR/JPY-OTC", "GBP/JPY-OTC", "USD/CHF-OTC", "NZD/USD-OTC", "BTC/USD-OTC"
 ];
 
-function enviarTelegram(msg, comBotao = true) {
+listaAtivos.forEach(a => ativosData[a] = { wins: 0, loss: 0 });
+
+function enviarTelegram(msg, botao = true) {
     const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
-    const payload = {
-        chat_id: TG_CHAT_ID,
-        text: msg,
-        parse_mode: "Markdown",
-        reply_markup: comBotao ? { inline_keyboard: [[{ text: "📲 OPERAR NA IQ OPTION", url: LINK_CORRETORA }]] } : {}
+    const data = {
+        chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown",
+        reply_markup: botao ? { inline_keyboard: [[{ text: "📲 OPERAR NA IQ OPTION", url: LINK_CORRETORA }]] } : {}
     };
-    axios.post(url, payload).catch(err => console.log("Erro Telegram"));
+    axios.post(url, data).catch(e => console.log("Erro TG"));
 }
 
-// LOOP PRINCIPAL (Roda a cada segundo no servidor)
+function obterPlacar(ativo) {
+    return `📊 Placar ${ativo}: ${ativosData[ativo].wins}W - ${ativosData[ativo].loss}L\n🌍 Global: ${statsGlobal.wins}W - ${statsGlobal.loss}L`;
+}
+
 setInterval(() => {
     const agora = new Date();
     const segs = agora.getSeconds();
 
-    ativos.forEach(ativo => {
-        // GATILHO 1: BUSCANDO TAXA (50s)
+    listaAtivos.forEach(ativo => {
+        // 1. PRÉ-ALERTA: Força 70% (Segundo 50 da vela anterior)
         if (segs === 50) {
-            let forca = Math.floor(Math.random() * (95 - 70) + 70); // Simula sua regra de 70%
-            enviarTelegram(`🔍 *BUSCANDO TAXA...*\n📊 Ativo: ${ativo.nome}\n⚡ Força: ${forca}%`, false);
+            let forca = Math.floor(Math.random() * 20) + 75; 
+            if (forca >= 70) {
+                enviarTelegram(`🔍 *ANALISANDO TAXA...*\n📊 Ativo: ${ativo}\n⚡ Força: ${forca}%\n⚠️ Aguardando Retração de 30%...`, false);
+            }
         }
 
-        // GATILHO 2: ENTRADA (00s)
-        if (segs === 0) {
-            let direcao = Math.random() > 0.5 ? "CALL 🟢" : "PUT 🔴";
-            let msg = `🚀 *ENTRADA CONFIRMADA*\n💎 Ativo: ${ativo.nome}\n📈 Direção: ${direcao}\n⏰ Expiração: 1 MINUTO\n\n`;
-            msg += `📊 *PLACAR ATIVO:* ${ativo.wins}W - ${ativo.loss}L\n`;
-            msg += `🌍 *GLOBAL:* ${statsGlobal.winDireto + statsGlobal.winGale1 + statsGlobal.winGale2}W - ${statsGlobal.loss}L`;
-            
-            enviarTelegram(msg);
-            
-            // Lógica de Gale (Simulada para o Telegram)
-            setTimeout(() => { 
-                // Se der loss direto, manda Gale 1 após 60s
-                executarGales(ativo, direcao);
-            }, 61000); 
+        // 2. ENTRADA: Retração de 30% (Válido apenas entre o segundo 01 e 30)
+        if (segs >= 1 && segs <= 30) {
+            let gatilhoRetracao = Math.random() > 0.97; // Simulação do sinal
+            if (gatilhoRetracao) {
+                let direcao = Math.random() > 0.5 ? "CALL 🟢" : "PUT 🔴";
+                enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 Ativo: ${ativo}\n📈 Direção: ${direcao}\n⏱️ Entrada: ${segs}s da Vela 1\n🏁 Expiração: ${segs}s da Vela 2 (1 min)\n\n${obterPlacar(ativo)}`);
+                
+                // AJUSTE DE TEMPO: Exatamente 60 segundos após a entrada
+                setTimeout(() => processarResultado(ativo, direcao, 0), 60000);
+            }
         }
     });
 }, 1000);
 
-function executarGales(ativo, direcao) {
-    // Simulação de Gale no Telegram
-    enviarTelegram(`🔄 *ENTRADA GALE 1*\n💎 Ativo: ${ativo.nome}\n📈 Direção: ${direcao} (Mantida)`, true);
-    
-    setTimeout(() => {
-        enviarTelegram(`🔄 *ENTRADA GALE 2*\n💎 Ativo: ${ativo.nome}\n📈 Direção: ${direcao} (Mantida)`, true);
-    }, 60000);
+function processarResultado(ativo, direcao, gale) {
+    let win = Math.random() > 0.4;
+    let label = gale === 0 ? "DIRETO" : `GALE ${gale}`;
+
+    if (win) {
+        statsGlobal.wins++;
+        ativosData[ativo].wins++;
+        enviarTelegram(`✅ *GREEN ${label}!* ✅\n💎 Ativo: ${ativo}\n🎯 Direção: ${direcao}\n\n${obterPlacar(ativo)}`);
+    } else if (gale < 2) {
+        let proximoGale = gale + 1;
+        enviarTelegram(`🔄 *ENTRADA GALE ${proximoGale}*\n💎 Ativo: ${ativo}\n📈 Direção: ${direcao}\n⚠️ Expiração: 1 Minuto`);
+        setTimeout(() => processarResultado(ativo, direcao, proximoGale), 60000);
+    } else {
+        statsGlobal.loss++;
+        ativosData[ativo].loss++;
+        enviarTelegram(`❌ *LOSS (GALE 2)* ❌\n💎 Ativo: ${ativo}\n\n${obterPlacar(ativo)}`, false);
+    }
 }
 
-// Relatório de 5 minutos
-setInterval(() => {
-    let msg = `📊 *RELATÓRIO DE PERFORMANCE 24H*\n\n`;
-    msg += `✅ Win Direto: ${statsGlobal.winDireto}\n`;
-    msg += `🔄 Win Gale 1: ${statsGlobal.winGale1}\n`;
-    msg += `🔄 Win Gale 2: ${statsGlobal.winGale2}\n`;
-    msg += `❌ Loss: ${statsGlobal.loss}\n`;
-    enviarTelegram(msg, false);
-}, 300000);
-
-console.log("Servidor KCM Rodando...");
+console.log("Servidor KCM V19 (60s Precision) - Ativado");
