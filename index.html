@@ -38,22 +38,27 @@
     <div class="grid-container" id="grid"></div>
 
 <script>
-    // BUSCA A LISTA COMPLETA DO SERVIDOR
-    async function carregarOpcoes(selectElement) {
+    // BUSCA A LISTA UMA ÚNICA VEZ E GUARDA PARA TODOS OS CAMPOS
+    async function carregarListaParaTodos() {
         try {
             const res = await fetch('/lista-ativos');
             const lista = await res.json();
-            selectElement.innerHTML = ''; // Limpa
-            lista.forEach(ativo => {
-                let opt = document.createElement('option');
-                opt.value = ativo;
-                opt.innerText = ativo;
-                selectElement.appendChild(opt);
-            });
+            
+            for (let i = 0; i < 4; i++) {
+                const sel = document.getElementById(`select-${i}`);
+                if (sel) {
+                    sel.innerHTML = ''; 
+                    lista.forEach(ativo => {
+                        let opt = document.createElement('option');
+                        opt.value = ativo;
+                        opt.innerText = ativo;
+                        sel.appendChild(opt);
+                    });
+                }
+            }
         } catch (e) { console.error("Erro ao carregar lista"); }
     }
 
-    // AVISA O SERVIDOR QUE VOCÊ MUDOU O ATIVO
     async function mudarAtivo(index, ativo) {
         await fetch('/selecionar-ativo', {
             method: 'POST',
@@ -64,6 +69,7 @@
 
     function criarCards() {
         const grid = document.getElementById('grid');
+        grid.innerHTML = '';
         for (let i = 0; i < 4; i++) {
             grid.innerHTML += `
                 <div class="card">
@@ -75,10 +81,10 @@
                         <option>Carregando...</option>
                     </select>
                 </div>`;
-            const sel = document.getElementById(`select-${i}`);
-            carregarOpcoes(sel);
             iniciarInterface(i);
         }
+        // Carrega a lista uma única vez para preencher os 4 blocos
+        carregarListaParaTodos();
     }
 
     function iniciarInterface(i) {
@@ -86,15 +92,20 @@
             let segs = new Date().getSeconds();
             document.getElementById(`timer-${i}`).innerText = (60 - segs).toString().padStart(2, '0');
             
-            // Sincroniza placares globais e força vindo do servidor
-            const res = await fetch('/dados');
-            const dados = await res.json();
-            if (dados[i]) {
-                document.getElementById(`therm-${i}`).style.width = dados[i].forca + "%";
-                document.getElementById('g-wins').innerText = dados.reduce((a, b) => a + b.wins, 0);
-                document.getElementById('g-loss').innerText = dados.reduce((a, b) => a + b.loss, 0);
-            }
-        }, 1000);
+            try {
+                const res = await fetch('/dados');
+                const dados = await res.json();
+                if (dados[i]) {
+                    document.getElementById(`therm-${i}`).style.width = dados[i].forca + "%";
+                    document.getElementById('g-wins').innerText = dados.reduce((a, b) => a + b.wins, 0);
+                    document.getElementById('g-loss').innerText = dados.reduce((a, b) => a + b.loss, 0);
+                    let total = dados.reduce((a, b) => a + b.wins + b.loss, 0);
+                    document.getElementById('g-analises').innerText = total;
+                    let perc = total > 0 ? ((dados.reduce((a, b) => a + b.wins, 0) / total) * 100).toFixed(1) : 0;
+                    document.getElementById('g-perc').innerText = perc + "%";
+                }
+            } catch (e) {}
+        }, 2000); // Aumentei para 2 segundos para não sobrecarregar o Render
     }
 
     window.onload = criarCards;
