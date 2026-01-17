@@ -3,64 +3,80 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
-// CONFIGURAÇÕES
-const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI";
-const TG_CHAT_ID = "-1003355965894";
-const LINK_CORRETORA = "https://iqoption.com/trader";
-
-let statsGlobal = { wins: 0, loss: 0, totalAnalises: 0 };
-const ativosData = {};
-const listaAtivos = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/USD-OTC", "GBP/USD-OTC"]; // Podes editar aqui
-
-listaAtivos.forEach(a => ativosData[a] = { wins: 0, loss: 0, total: 0 });
-
-// ROTA PARA O PAINEL (INDEX.HTML) LER OS DADOS
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
+
+// 1. A LISTA QUE VAI APARECER QUANDO VOCÊ CLICAR NAS SETINHAS
+const listaCompleta = [
+    "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "EUR/GBP",
+    "EUR/USD-OTC", "GBP/USD-OTC", "USD/JPY-OTC", "USD/CHF-OTC", 
+    "EUR/JPY-OTC", "GBP/JPY-OTC", "AUD/USD-OTC", "BTC/USD-OTC"
+];
+
+// 2. OS 4 ATIVOS QUE VOCÊ ESCOLHE NO PAINEL (COMEÇAM VAZIOS OU PADRÃO)
+let ativosSelecionados = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD"];
+let ativosData = {};
+listaCompleta.forEach(a => ativosData[a] = { wins: 0, loss: 0, total: 0 });
+
+// 3. ROTA QUE ENTREGA A LISTA PARA O SEU PAINEL CLICÁVEL
+app.get('/lista-ativos', (req, res) => {
+    res.json(listaCompleta);
+});
+
+// 4. ROTA QUE RECEBE A SUA ESCOLHA DO PAINEL E MANDA O ROBO MUDAR
+app.post('/selecionar-ativo', (req, res) => {
+    const { index, ativo } = req.body;
+    if (listaCompleta.includes(ativo)) {
+        ativosSelecionados[index] = ativo;
+        console.log(`Painel mudou bloco ${index} para: ${ativo}`);
+        res.json({ status: "sucesso", ativo });
+    }
+});
+
 app.get('/dados', (req, res) => {
-    const dados = listaAtivos.slice(0, 4).map(ativo => ({ // LIMITA AOS 4 DO PAINEL
+    const dados = ativosSelecionados.map(ativo => ({
         nome: ativo,
         wins: ativosData[ativo].wins,
         loss: ativosData[ativo].loss,
-        forca: Math.floor(Math.random() * 20) + 75,
+        forca: Math.floor(Math.random() * 15) + 80,
         status: "analisando"
     }));
     res.json(dados);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Robô ON na porta ${PORT}`));
+// CONFIGURAÇÕES DO TELEGRAM
+const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI";
+const TG_CHAT_ID = "-1003355965894";
+const LINK_CORRETORA = "https://iqoption.com/trader";
 
 function enviarTelegram(msg, botao = true) {
     const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
     const data = {
         chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown",
-        reply_markup: botao ? { inline_keyboard: [[{ text: "📲 OPERAR NA IQ OPTION", url: LINK_CORRETORA }]] } : {}
+        reply_markup: botao ? { inline_keyboard: [[{ text: "📲 OPERAR AGORA", url: LINK_CORRETORA }]] } : {}
     };
     axios.post(url, data).catch(e => console.log("Erro TG"));
 }
 
-// RELATÓRIO DE 5 EM 5 MINUTOS
+// 5. RELATÓRIO DE 5 EM 5 MINUTOS (RANKING)
 setInterval(() => {
-    let ranking = listaAtivos
-        .sort((a, b) => ativosData[b].wins - ativosData[a].wins)
-        .map(a => `🔹 ${a}: ${ativosData[a].wins}W - ${ativosData[a].loss}L`).join('\n');
+    let ranking = ativosSelecionados
+        .map(a => `🔹 ${a}: ${ativosData[a].wins}W - ${ativosData[a].loss}L`)
+        .join('\n');
+    
+    enviarTelegram(`📊 *RANKING DOS SELECIONADOS*\n\n${ranking}`, false);
+}, 300000);
 
-    const eficiencia = statsGlobal.totalAnalises > 0 
-        ? ((statsGlobal.wins / statsGlobal.totalAnalises) * 100).toFixed(1) 
-        : 0;
-
-    const relatorio = `📊 *RELATÓRIO DE PERFORMANCE*\n\n🏆 *Ranking de Ativos:*\n${ranking}\n\n📈 *Resumo Global:*\n✅ Wins: ${statsGlobal.wins}\n❌ Loss: ${statsGlobal.loss}\n🔍 Total de Análises: ${statsGlobal.totalAnalises}\n🎯 Assertividade: ${eficiencia}%`;
-    enviarTelegram(relatorio, false);
-}, 300000); // 300.000ms = 5 minutos
-
-// LOOP DE ANÁLISE M1
+// 6. O ROBO SÓ ANALISA OS 4 QUE VOCÊ ESCOLHEU NO PAINEL
 setInterval(() => {
     const segs = new Date().getSeconds();
     if (segs === 50) {
-        listaAtivos.slice(0, 4).forEach(ativo => { // SÓ ANALISA OS 4 ATIVOS
-            statsGlobal.totalAnalises++;
-            enviarTelegram(`⚠️ *ATENÇÃO M1 - ${ativo}*\n📊 Analisando força atual...\n✅ Wins: ${ativosData[ativo].wins} | ❌ Loss: ${ativosData[ativo].loss}`, false);
+        ativosSelecionados.forEach(ativo => {
+            enviarTelegram(`⚠️ *ATENÇÃO M1 - ${ativo}*\n📊 Analisando...`, false);
+            // Aqui entra a sua lógica de análise
         });
     }
-    // ... restante da lógica de entrada e Gale que já tens ...
 }, 1000);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Servidor rodando e ouvindo o painel"));
