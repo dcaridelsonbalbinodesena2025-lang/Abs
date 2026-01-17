@@ -101,7 +101,7 @@ setInterval(() => {
         }
 
         if (segs === 0 && d.gatilho) {
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 *${ativo}* | *${d.direcao}*`);
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉CLIQUE AGORA\n💎 *${ativo}* | *${d.direcao}*`);
             d.gatilho = false;
             verificarResultadoFinal(ativo, d.direcao);
         }
