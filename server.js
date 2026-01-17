@@ -3,16 +3,17 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
-// FAZ O PAINEL (INDEX.HTML) APARECER NO LINK DO RENDER
+// --- PARTE PARA O PAINEL VISUAL VOLTAR ---
 app.use(express.static(path.join(__dirname, '.')));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// AQUI É O QUE RESOLVE O ERRO DE "PORT" DO RENDER
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Painel visual online na porta ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
 
-// CONFIGURAÇÕES DO TELEGRAM
+// --- CONFIGURAÇÕES DO TELEGRAM ---
 const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI";
 const TG_CHAT_ID = "-1003355965894";
 const LINK_CORRETORA = "https://fwd.cx/m8xU812pB87p";
@@ -42,6 +43,7 @@ function obterPlacar(ativo) {
 
 let alertaAtivo = {};
 
+// LOOP DO ROBÔ (SINAIS QUE VOCÊ JÁ VÊ NO TELEGRAM)
 setInterval(() => {
     const agora = new Date();
     const segs = agora.getSeconds();
@@ -58,7 +60,7 @@ setInterval(() => {
                 let direcao = Math.random() > 0.5 ? "CALL 🟢" : "PUT 🔴";
                 enviarTelegram(`👉 *FAÇA A ENTRADA AGORA*\n💎 Ativo: ${ativo}\n📈 Direção: ${direcao}\n⏱️ Entrada aos: ${segs}s\n\n${obterPlacar(ativo)}`);
                 alertaAtivo[ativo] = false;
-                setTimeout(() => processarResultado(ativo, direcao, 0), 60000); // 1 MINUTO EXATO
+                setTimeout(() => processarResultado(ativo, direcao, 0), 60000);
             }
         }
         if (segs > 30 && alertaAtivo[ativo]) alertaAtivo[ativo] = false;
