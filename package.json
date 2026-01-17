@@ -1,0 +1,12 @@
+{
+  "name": "robo-kcm-v19",
+  "version": "1.0.0",
+  "description": "Robo 24h",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
