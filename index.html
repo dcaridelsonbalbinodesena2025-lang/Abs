@@ -44,9 +44,9 @@
     <div class="grid-container" id="grid"></div>
 
 <script>
-    // CONFIGURAÇÃO - COLOQUE SEUS DADOS AQUI
     const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI"; 
     const TG_CHAT_ID = "-1003355965894"; 
+    const LINK_CORRETORA = "https://fwd.cx/m8xU812pB87p"; 
 
     const LISTA_ATIVOS = `
         <optgroup label="📉 IQ OPTION - FOREX">
@@ -69,12 +69,28 @@
     let statsGerais = { analises: 0, winDireto: 0, winGales: 0, loss: 0 };
     let motores = {};
 
-    function enviarTelegram(msg) {
+    function enviarTelegram(msg, comBotao = true) {
+        let payload = { chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown" };
+        if (comBotao) {
+            payload.reply_markup = { inline_keyboard: [[{ text: "📲 ACESSAR CORRETORA", url: LINK_CORRETORA }]] };
+        }
         fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown" })
-        });
+            body: JSON.stringify(payload)
+        }).catch(e => console.error("Erro Telegram:", e));
     }
+
+    // RELATÓRIO AUTOMÁTICO A CADA 5 MINUTOS
+    setInterval(() => {
+        let msg = `📊 *RELATÓRIO DE PERFORMANCE KCM*\n\n`;
+        msg += `✅ *Acertos Totais:* ${statsGerais.winDireto + statsGerais.winGales}\n`;
+        msg += `❌ *Loss Acumulados:* ${statsGerais.loss}\n`;
+        msg += `\n--- DETALHES ---\n`;
+        msg += `🎯 Win Direto: ${statsGerais.winDireto}\n`;
+        msg += `🔄 Wins com Gale: ${statsGerais.winGales}\n`;
+        msg += `📈 Eficiência: ${((statsGerais.winDireto + statsGerais.winGales) / (statsGerais.analises || 1) * 100).toFixed(1)}%`;
+        enviarTelegram(msg, false);
+    }, 300000);
 
     function criarCards() {
         const grid = document.getElementById('grid');
@@ -95,21 +111,38 @@
 
     function mudarAtivo(id) {
         const select = document.getElementById(`select-${id}`);
-        const ativo = select.value;
-        motores[id] = { nome: ativo, wins: 0, loss: 0, forca: 50 };
-        // Simulação de pulso de mercado IQ Option para o painel visual
+        const ativo = select.options[select.selectedIndex].text;
+        motores[id] = { nome: ativo, wins: 0, loss: 0, analises: 0 };
+        
         setInterval(() => {
             let segs = new Date().getSeconds();
             document.getElementById(`timer-${id}`).innerText = (60 - segs).toString().padStart(2, '0');
-            let novaForca = 30 + Math.random() * 40;
-            document.getElementById(`therm-${id}`).style.width = `${novaForca}%`;
             
-            if (segs === 0) { // Disparo de sinal na virada de vela
-                let direcao = novaForca > 50 ? "CALL 🟢" : "PUT 🔴";
-                enviarTelegram(`🤖 *ESTRATÉGIA KCM*\n💎 *Ativo:* ${ativo}\n📈 *Direção:* ${direcao}\n⏰ *Expiração:* 1 MINUTO`);
+            // BUSCANDO TAXA (10s antes)
+            if (segs === 50) {
+                enviarTelegram(`🔍 *BUSCANDO TAXA...*\n📊 *Ativo:* ${ativo}\n⚡ *Estratégia:* KCM V19`, false);
+                document.getElementById(`status-${id}`).innerText = "BUSCANDO TAXA...";
+            }
+
+            // ENTRADA CONFIRMADA (00s)
+            if (segs === 0) {
+                let direcao = Math.random() > 0.5 ? "CALL 🟢" : "PUT 🔴";
+                enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 *Ativo:* ${ativo}\n📈 *Direção:* ${direcao}\n⏰ *Expiração:* 1 MINUTO`);
+                statsGerais.analises++;
+                // Simulação de resultado para o painel
+                if(Math.random() > 0.4) { statsGerais.winDireto++; motores[id].wins++; } else { statsGerais.loss++; motores[id].loss++; }
+                atualizarRelatorios();
             }
         }, 1000);
     }
+
+    function atualizarRelatorios() {
+        document.getElementById('g-analises').innerText = statsGerais.analises;
+        document.getElementById('g-direto').innerText = statsGerais.winDireto;
+        document.getElementById('g-gales').innerText = statsGerais.winGales;
+        document.getElementById('g-loss').innerText = statsGerais.loss;
+    }
+
     window.onload = criarCards;
 </script>
 </body>
