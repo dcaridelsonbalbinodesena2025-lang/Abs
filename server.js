@@ -32,7 +32,8 @@ function calcEficiencia(nome) {
     return t > 0 ? (((d.wins + d.g1 + d.g2) / t) * 100).toFixed(1) : "0.0";
 }
 
-function gerarRelatorioGrande(ativoFinal, resultadoTipo) {
+// FUNÇÃO DO RELATÓRIO GRANDE (CHAMADA AGORA PELO TIMER DE 5 MINUTOS)
+function enviarRelatorioPeriodico() {
     const totalGlobal = global.wins + global.loss + global.g1 + global.g2 + global.redGale;
     const efGlobal = totalGlobal > 0 ? (((global.wins + global.g1 + global.g2) / totalGlobal) * 100).toFixed(1) : "0.0";
     const maisGale = Object.keys(dadosAtivos).reduce((a, b) => 
@@ -44,8 +45,13 @@ function gerarRelatorioGrande(ativoFinal, resultadoTipo) {
         .slice(0, 2)
         .map((r, i) => `🏆 ${i+1}º ${r.nome}: ${r.ef}%`).join("\n");
 
-    return `📊 *RELATÓRIO DE PERFORMANCE*\n\n✅ *RESULTADO:* ${resultadoTipo} em ${ativoFinal}\n\n📈 *GERAL:*\n\`• Análises: ${global.analises}\` \n\`• Wins Diretos: ${global.wins}\` \n\`• Losses Diretos: ${global.loss}\` \n\`• Wins c/ Gale: ${global.g1 + global.g2}\` \n\`• Reds c/ Gale: ${global.redGale}\` \n\n🚨 *ALERTA:* \n\`• +Gales em: ${maisGale}\` \n\n🏆 *TOP RANKING:* \n${ranking} \n\n🔥 *EFICIÊNCIA ROBO: ${efGlobal}%*`;
+    const mensagem = `📊 *RELATÓRIO DE PERFORMANCE (5 MIN)*\n\n📈 *GERAL DA SESSÃO:*\n\`• Análises: ${global.analises}\` \n\`• Wins Diretos: ${global.wins}\` \n\`• Losses Diretos: ${global.loss}\` \n\`• Wins c/ Gale: ${global.g1 + global.g2}\` \n\`• Reds c/ Gale: ${global.redGale}\` \n\n🚨 *ALERTA:* \n\`• +Gales em: ${maisGale}\` \n\n🏆 *TOP RANKING:* \n${ranking} \n\n🔥 *EFICIÊNCIA ROBO: ${efGlobal}%*`;
+    
+    enviarTelegram(mensagem, false);
 }
+
+// TIMER FIXO: ENVIA O RELATÓRIO A CADA 5 MINUTOS (300.000 ms)
+setInterval(enviarRelatorioPeriodico, 300000);
 
 function verificarResultadoFinal(ativo, direcao) {
     const d = dadosAtivos[ativo];
@@ -53,31 +59,30 @@ function verificarResultadoFinal(ativo, direcao) {
         const sorte = Math.random();
         if (sorte > 0.4) {
             d.wins++; global.wins++;
-            enviarTelegram(gerarRelatorioGrande(ativo, "✅ WIN DIRETO"), false);
+            enviarTelegram(`✅ *WIN DIRETO: ${ativo}*\n🎯 *SINAL:* ${direcao}`, false);
         } else {
             enviarTelegram(`⚠️ **GALE 1: ${ativo}**\n🔁 **SINAL:** ${direcao}`);
             setTimeout(() => {
                 if (Math.random() > 0.3) {
                     d.g1++; global.g1++;
-                    enviarTelegram(gerarRelatorioGrande(ativo, "✅ WIN G1"), false);
+                    enviarTelegram(`✅ *WIN NO G1: ${ativo}*`, false);
                 } else {
                     enviarTelegram(`⚠️ **GALE 2: ${ativo}**\n🔁 **SINAL:** ${direcao}`);
                     setTimeout(() => {
                         if (Math.random() > 0.2) {
                             d.g2++; global.g2++;
-                            enviarTelegram(gerarRelatorioGrande(ativo, "✅ WIN G2"), false);
+                            enviarTelegram(`✅ *WIN NO G2: ${ativo}*`, false);
                         } else {
                             d.redGale++; global.redGale++;
-                            enviarTelegram(gerarRelatorioGrande(ativo, "❌ RED NO G2"), false);
+                            enviarTelegram(`❌ *RED NO G2: ${ativo}*`, false);
                         }
-                    }, 60000); // Voltei para 60s
+                    }, 60000);
                 }
             }, 60000);
         }
     }, 60000);
 }
 
-// CICLO COM TRAVA DE MINUTO PARA EVITAR DUPLICIDADE
 setInterval(() => {
     const agora = new Date();
     const segs = agora.getSeconds();
@@ -85,8 +90,6 @@ setInterval(() => {
 
     ativosSelecionados.forEach(ativo => {
         const d = dadosAtivos[ativo];
-
-        // Se já processamos este ativo NESTE MINUTO, não faz nada
         if (d.ultimoMinuto === minAtual) return;
 
         if (segs === 50) {
@@ -94,7 +97,7 @@ setInterval(() => {
             d.gatilho = true;
             global.analises++;
             enviarTelegram(`⚠️ *ANALISANDO:* ${ativo}\n🎯 *SINAL:* ${d.direcao}\n\n\`📊 ATIVO: ${d.wins}W-${d.loss}L\``);
-            d.ultimoMinuto = minAtual; // TRAVA O MINUTO
+            d.ultimoMinuto = minAtual;
         }
 
         if (segs === 0 && d.gatilho) {
@@ -105,6 +108,7 @@ setInterval(() => {
     });
 }, 1000);
 
+// ROTAS DO PAINEL
 app.get('/lista-ativos', (req, res) => res.json(listaAtivos));
 app.post('/selecionar-ativo', (req, res) => {
     ativosSelecionados[req.body.index] = req.body.ativo;
