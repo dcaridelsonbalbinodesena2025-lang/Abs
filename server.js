@@ -62,11 +62,9 @@ const LISTA_ATIVOS = [
     { id: "cryDSHUSD", nome: "💨 DASH (DASH/USD)" }
 ];
 
-
 let statsDia = { analises: 0, winDireto: 0, winGales: 0, loss: 0 };
 let statsSemana = { analises: 0, winDireto: 0, winGales: 0, loss: 0 };
 let motores = {};
-let ws;
 let slots = ["1HZ100V", "R_100", "frxEURUSD", "NONE"];
 
 function inicializarMotores() {
@@ -75,17 +73,11 @@ function inicializarMotores() {
             const info = LISTA_ATIVOS.find(a => a.id === id);
             motores[id] = { 
                 nome: info ? info.nome : id, wins: 0, loss: 0, aberturaVela: 0, 
-                forca: 50, operacaoAtiva: null, galeAtual: 0, tempoOp: 0, precoEntrada: 0, precoAtual: 0 
+                forca: 50, operacaoAtiva: null, galeAtual: 0, tempoOp: 0, precoEntrada: 0,
+                analiseEnviada: false, precoAtual: 0 
             };
         }
     });
-}
-
-function conectar(){
-    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-    ws.on('open', () => slots.forEach(id => id!=="NONE" && ws.send(JSON.stringify({ticks:id}))));
-    ws.on('message', data => { const r=JSON.parse(data); if(r.tick) processarTick(r.tick.symbol, r.tick.quote); });
-    ws.on('close', () => setTimeout(conectar, 5000));
 }
 
 async function enviarTelegram(msg, comBotao = false) {
@@ -98,7 +90,7 @@ function gerarPlacarMsg(id) {
     const m = motores[id];
     const totalW = statsDia.winDireto + statsDia.winGales;
     const assert = statsDia.analises > 0 ? ((totalW / statsDia.analises) * 100).toFixed(1) : "0";
-    return `\n\n🏆 *PLACAR ATUAL* 🏆\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL HOJE:* ${totalW}W - ${statsDia.loss}L\n🔥EFICIÊNCIA: (${assert}%)`;
+    return `\n\n🏆 *PLACAR ATUAL*\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL HOJE:* ${totalW}W - ${statsDia.loss}L (${assert}%)`;
 }
 
 function registrarResultado(id, win, gale) {
@@ -118,7 +110,8 @@ function registrarResultado(id, win, gale) {
 function processarTick(id, preco) {
     const m = motores[id]; if (!m) return;
     m.precoAtual = preco;
-    const segs = new Date().getSeconds();
+    const agora = new Date();
+    const segs = agora.getSeconds();
     const direcaoTxt = (s) => s === "CALL" ? "🟢 COMPRA" : "🔴 VENDA";
 
     if (m.aberturaVela > 0) {
@@ -126,15 +119,33 @@ function processarTick(id, preco) {
         m.forca = Math.min(98, Math.max(2, m.forca));
     }
 
-    if (segs === 0 && m.aberturaVela !== preco) {
-        m.aberturaVela = preco;
-        let sinal = m.forca >= 70 ? "CALL" : m.forca <= 30 ? "PUT" : null;
-        if (sinal && !m.operacaoAtiva) {
-            m.operacaoAtiva = sinal; m.precoEntrada = preco; m.tempoOp = 60;
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 CLIQUE AGORA\n\n💎 *Ativo:* ${m.nome}\n🎯 *Sinal:* ${direcaoTxt(sinal)}${gerarPlacarMsg(id)}`, false);
+    // --- LÓGICA DE PRÉ-ALERTA (ANALISANDO) ---
+    if (segs >= 45 && segs <= 50 && !m.analiseEnviada && !m.operacaoAtiva) {
+        let sinalPrevia = m.forca >= 65 ? "CALL" : m.forca <= 35 ? "PUT" : null;
+        if (sinalPrevia) {
+            const proxMinuto = new Date(agora.getTime() + 60000);
+            const horaEntrada = proxMinuto.getHours().toString().padStart(2, '0') + ":" + proxMinuto.getMinutes().toString().padStart(2, '0');
+            enviarTelegram(`🔍 *ANALISANDO ATIVO*\n💎 Ativo: ${m.nome}\n⏰ Possível entrada: *${horaEntrada}:00*\n⚠️ _Aguarde a confirmação..._`, false);
+            m.analiseEnviada = true;
         }
     }
 
+    // --- LÓGICA DE CONFIRMAÇÃO OU ABORTO (00 SEGUNDOS) ---
+    if (segs === 0 && m.aberturaVela !== preco) {
+        m.aberturaVela = preco;
+        let sinalFinal = m.forca >= 70 ? "CALL" : m.forca <= 30 ? "PUT" : null;
+
+        if (sinalFinal && !m.operacaoAtiva) {
+            m.operacaoAtiva = sinalFinal; m.precoEntrada = preco; m.tempoOp = 60;
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 CLIQUE AGORA\n\n💎 *Ativo:* ${m.nome}\n🎯 *Sinal:* ${direcaoTxt(sinalFinal)}${gerarPlacarMsg(id)}`, false);
+        } 
+        else if (m.analiseEnviada && !sinalFinal && !m.operacaoAtiva) {
+            enviarTelegram(`❌ *ENTRADA ABORTADA*\nO sinal em ${m.nome} não confirmou a força necessária.`, false);
+        }
+        m.analiseEnviada = false; // Reseta para a próxima vela
+    }
+
+    // --- LÓGICA DE RESULTADO E GALE ---
     if (m.tempoOp > 0) {
         m.tempoOp--;
         if (m.tempoOp <= 0) {
@@ -178,9 +189,15 @@ setInterval(() => {
     }
 }, 60000);
 
-// --- ROTAS DO SERVIDOR ---
-app.get('/api/status', (req, res) => res.json({ slots, motores, statsDia, statsSemana }));
+let ws;
+function conectar(){
+    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.on('open', () => slots.forEach(id => id!=="NONE" && ws.send(JSON.stringify({ticks:id}))));
+    ws.on('message', data => { const r=JSON.parse(data); if(r.tick) processarTick(r.tick.symbol, r.tick.quote); });
+    ws.on('close', () => setTimeout(conectar, 5000));
+}
 
+app.get('/api/status', (req, res) => res.json({ slots, motores, statsDia, statsSemana }));
 app.get('/mudar/:index/:novoId', (req, res) => {
     const { index, novoId } = req.params;
     if (ws && slots[index] !== "NONE") ws.send(JSON.stringify({ forget: slots[index] }));
@@ -188,7 +205,6 @@ app.get('/mudar/:index/:novoId', (req, res) => {
     if (ws && novoId !== "NONE") ws.send(JSON.stringify({ ticks: novoId }));
     res.redirect('/');
 });
-
 app.get('/', (req, res) => {
     let options = LISTA_ATIVOS.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
     res.send(`<!DOCTYPE html><html><head><title>KCM V24</title><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -198,11 +214,10 @@ app.get('/', (req, res) => {
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
     ${slots.map((id, i) => `<div class="card"><div id="n-${i}">Lendo...</div><div id="p-${i}" style="font-size:18px; font-weight:bold; margin:10px 0;">---</div>
     <select onchange="location.href='/mudar/${i}/'+this.value" style="width:100%;"><option value="">Trocar Ativo</option>${options}</select></div>`).join('')}
-    </div><div id="placar" style="margin-top:20px; color:#1e90ff; font-weight:bold;">Placar: 0W - 0L</div>
-    <script>setInterval(async()=>{ const r=await fetch('/api/status'); const d=await r.json(); 
+    </div><script>setInterval(async()=>{ const r=await fetch('/api/status'); const d=await r.json(); 
     d.slots.forEach((id,i)=>{ const m=d.motores[id]||{nome:"OFF", precoAtual:0}; 
     document.getElementById('n-'+i).innerText=m.nome; document.getElementById('p-'+i).innerText=id==="NONE"?"---":m.precoAtual.toFixed(4); });
-    document.getElementById('placar').innerText="Semanal: "+(d.statsSemana.winDireto+d.statsSemana.winGales)+"W - "+d.statsSemana.loss+"L"; }, 2000);</script></body></html>`);
+    }, 2000);</script></body></html>`);
 });
 
 inicializarMotores(); conectar(); app.listen(process.env.PORT || 3000);
