@@ -53,7 +53,7 @@ setInterval(() => {
                 d.gatilhoRusso = true;
                 d.ultimoMinuto = minAtual;
                 global.analises++;
-                enviarTelegram(`⚠️ *ANALISANDO:* ${ativo}\n🔥 *FORÇA RUSSA:* ${forca}%\n🎯 *SINAL:* ${d.direcao}\n\n⏳ *AGUARDANDO RETRAÇÃO DE 30%...*`);
+                enviarTelegram(`⚠️ *ANALISANDO:* ${ativo}\n🔥 *FORÇA:* ${forca}%\n🎯 *SINAL:* ${d.direcao}\n\n⏳ *AGUARDANDO RETRAÇÃO DE 30%...*`);
             }
         }
 
