@@ -87,7 +87,7 @@ function inicializarMotores() {
 
 async function enviarTelegram(msg, comBotao = false) {
     const payload = { chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown" };
-    if (comBotao) payload.reply_markup = { inline_keyboard: [[{ text: "📲 OPERAR NA DERIV", url: LINK_CORRETORA }]] };
+    if (comBotao) payload.reply_markup = { inline_keyboard: [[{ text: "📲 OPERE NA DERIV", url: LINK_CORRETORA }]] };
     try { await axios.post(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, payload); } catch (e) {}
 }
 
@@ -95,7 +95,7 @@ function gerarPlacarMsg(id) {
     const m = motores[id];
     const totalW = statsDia.winDireto + statsDia.winGales;
     const efici = statsDia.analises > 0 ? ((totalW / statsDia.analises) * 100).toFixed(1) : "0.0";
-    return `\n\n📊 *PLACAR ${m.nome}:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${statsDia.loss}L\n🔥 *EFICIÊNCIA:* ${efici}%`;
+    return `\n📊 *PLACAR ${m.nome}:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${statsDia.loss}L\n🔥 *EFICIÊNCIA:* ${efici}%`;
 }
 
 function processarTick(id, preco) {
@@ -112,7 +112,7 @@ function processarTick(id, preco) {
     if (segs >= 5 && segs < 10 && !m.analiseEnviada && !m.operacaoAtiva) {
         const proxM = new Date(agoraBR.getTime() + (60 - segs) * 1000);
         const horaE = proxM.getHours().toString().padStart(2, '0') + ":" + proxM.getMinutes().toString().padStart(2, '0');
-        enviarTelegram(`🔍 *ANALISANDO ENTRADA*\n💎 Ativo: ${m.nome}\n⏰ Possível entrada: *${horaE}:00*\n⏳ _Aguardando força + taxa..._`);
+        enviarTelegram(`🔍 *ANALISANDO ENTRADA*\n💎 Ativo: ${m.nome}\n⏰ Possível entrada: *${horaE}:00*\n⏳ _Aguardando confirmação..._`);
         m.analiseEnviada = true;
     }
 
@@ -121,7 +121,7 @@ function processarTick(id, preco) {
         m.sinalPendente = m.forca >= FORCA_MINIMA ? "CALL" : m.forca <= (100 - FORCA_MINIMA) ? "PUT" : null;
         if (m.sinalPendente && !m.operacaoAtiva) {
             m.buscandoTaxa = true;
-            enviarTelegram(`⏳ *BUSCANDO TAXA...*\n💎 Ativo: ${m.nome}\n🎯 Tendência: ${m.sinalPendente === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n_Aguardando recuo de ${PCT_RECUO_TAXA}%..._`);
+            enviarTelegram(`⏳ *BUSCANDO POSSÍVEL ENTRADA...*\n💎 Ativo: ${m.nome}\n🎯 Tendência: ${m.sinalPendente === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n_Aguardando recuo de ${PCT_RECUO_TAXA}%..._`);
         }
         m.corpoVelaAnterior = Math.abs(preco - m.aberturaVelaAtual);
         m.fechamentoVelaAnterior = preco;
@@ -135,7 +135,7 @@ function processarTick(id, preco) {
                     (m.sinalPendente === "PUT" && preco >= (m.fechamentoVelaAnterior + dist));
         if (bateu) {
             m.buscandoTaxa = false; m.operacaoAtiva = m.sinalPendente; m.precoEntrada = preco; m.tempoOp = 60;
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 *CLIQUE AGORA*\n\n💎 Ativo: ${m.nome}\n🎯 Sinal: ${m.operacaoAtiva === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}${gerarPlacarMsg(id)}`, true);
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 *CLIQUE AGORA*\n💎 Ativo: ${m.nome}\n🎯 Sinal: ${m.operacaoAtiva === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}${gerarPlacarMsg(id)}`, true);
         }
     }
 
