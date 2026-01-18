@@ -64,7 +64,7 @@ function gerarPlacarMsg(id) {
     const m = motores[id];
     const totalW = globalStats.winDireto + globalStats.winGales;
     const assert = globalStats.analises > 0 ? ((totalW / globalStats.analises) * 100).toFixed(1) : "0";
-    return `\n\n━━━━━━━━━━━━━━━\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L (${assert}%)`;
+    return `\n🏆PLACAR🏆\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L (${assert}%)`;
 }
 
 function processarTick(id, preco) {
@@ -84,7 +84,7 @@ function processarTick(id, preco) {
         let alvo = diffVelaAnterior * 0.20; 
         if ((m.sinalPendente === "CALL" && preco <= (m.aberturaVela - alvo)) || (m.sinalPendente === "PUT" && preco >= (m.aberturaVela + alvo))) {
             m.operacaoAtiva = m.sinalPendente; m.precoEntrada = preco; m.tempoOp = (60 - segs); m.buscandoTaxa = false;
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n\n💎 *Ativo:* ${m.nome}\n🎯 *Sinal:* ${txtSinal(m.operacaoAtiva)}${gerarPlacarMsg(id)}`);
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 *Ativo:* ${m.nome}\n🎯 *Sinal:* ${txtSinal(m.operacaoAtiva)}${gerarPlacarMsg(id)}`);
         }
     }
 
