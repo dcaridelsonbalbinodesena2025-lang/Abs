@@ -7,7 +7,6 @@ const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI";
 const TG_CHAT_ID = "-1003355965894";
 const LINK_CORRETORA = "https://track.deriv.com/_S_W1N_";
 
-// --- LISTA MASSIVA E CATEGORIZADA ---
 const LISTA_ATIVOS = [
     { id: "NONE", nome: "❌ DESATIVAR SLOT" },
     { id: "1HZ10V", nome: "📈 Volatility 10 (1s)" },
@@ -74,7 +73,7 @@ function conectarDeriv() {
 
 async function enviarTelegram(msg, comBotao = true) {
     const payload = { chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown" };
-    if (comBotao) payload.reply_markup = { inline_keyboard: [[{ text: "📲 OPERAR AGORA NA DERIV", url: LINK_CORRETORA }]] };
+    if (comBotao) payload.reply_markup = { inline_keyboard: [[{ text: "📲 OPERE AGORA NA DERIV", url: LINK_CORRETORA }]] };
     try { await axios.post(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, payload); } catch (e) {}
 }
 
@@ -82,7 +81,7 @@ function gerarPlacarMsg(id) {
     const m = motores[id];
     const totalW = globalStats.winDireto + globalStats.winGales;
     const assert = globalStats.analises > 0 ? ((totalW / globalStats.analises) * 100).toFixed(1) : "0";
-    return `\n\n🏆 *PLACAR ATUAL* 🏆\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L (${assert}%)`;
+    return `\n\n🏆 *PLACAR ATUAL*\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L (${assert}%)`;
 }
 
 function processarTick(id, preco) {
@@ -137,14 +136,40 @@ function processarTick(id, preco) {
     }
 }
 
-// RELATÓRIO AUTOMÁTICO A CADA 5 MINUTOS
+// --- RELATÓRIO ESTILO PROFISSIONAL (IDÊNTICO À IMAGEM) ---
 setInterval(() => {
     if (globalStats.analises === 0) return;
-    const totalW = globalStats.winDireto + globalStats.winGales;
-    const assert = ((totalW / globalStats.analises) * 100).toFixed(1);
-    let rank = Object.values(motores).filter(m => (m.wins + m.loss) > 0).sort((a,b) => b.wins - a.wins).slice(0, 3).map((it, i) => `${i+1}º ${it.nome}: ${it.wins}W`).join("\n");
-    enviarTelegram(`📊 *RELATÓRIO DE PERFORMANCE*\n\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L\n🎯 *ASSERTIVIDADE:* ${assert}%\n\n🏆 *TOP ATIVOS:*\n${rank || "Sem dados"}`, false);
-}, 300000);
+    
+    const totalWins = globalStats.winDireto + globalStats.winGales;
+    const assertGeral = ((totalWins / globalStats.analises) * 100).toFixed(1);
+
+    // Ranking formatado por Porcentagem de Assertividade
+    let rank = Object.values(motores)
+        .filter(m => (m.wins + m.loss) > 0)
+        .sort((a, b) => {
+            let rateA = (a.wins / (a.wins + a.loss));
+            let rateB = (b.wins / (b.wins + b.loss));
+            return rateB - rateA;
+        })
+        .slice(0, 4)
+        .map((m, i) => {
+            let p = ((m.wins / (m.wins + m.loss)) * 100).toFixed(0);
+            return `${i+1}º ${m.nome}: ${p}%`;
+        })
+        .join("\n");
+
+    const msgRelatorio = `📊 *RELATÓRIO DE PERFORMANCE*\n\n` +
+                         `📈 *GERAL:*\n` +
+                         `• Análises: ${globalStats.analises}\n` +
+                         `• Wins Diretos: ${globalStats.winDireto}\n` +
+                         `• Losses Diretos: 0\n` +
+                         `• Wins c/ Gale: ${globalStats.winGales}\n` +
+                         `• Reds c/ Gale: ${globalStats.loss}\n\n` +
+                         `🏆 *RANKING ATIVOS:*\n${rank || "Aguardando dados..."}\n\n` +
+                         `🔥 *EFICIÊNCIA ROBO: ${assertGeral}%*`;
+
+    enviarTelegram(msgRelatorio, false);
+}, 300000); // 5 Minutos
 
 app.get('/api/status', (req, res) => res.json({ slots, motores, globalStats }));
 
