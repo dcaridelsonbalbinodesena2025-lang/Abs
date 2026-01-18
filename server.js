@@ -10,31 +10,24 @@ const LINK_CORRETORA = "https://track.deriv.com/_S_W1N_";
 // --- LISTA MASSIVA COMPLETA (NÃO DIMINUI MAIS) ---
 const LISTA_ATIVOS = [
     { id: "NONE", nome: "❌ NENHUM (DESATIVAR)" },
-    // SINTÉTICOS VOLATILITY
     { id: "1HZ10V", nome: "Volatility 10 (1s)" }, { id: "1HZ25V", nome: "Volatility 25 (1s)" },
     { id: "1HZ50V", nome: "Volatility 50 (1s)" }, { id: "1HZ75V", nome: "Volatility 75 (1s)" },
     { id: "1HZ100V", nome: "Volatility 100 (1s)" }, { id: "R_10", nome: "Volatility 10" },
     { id: "R_25", nome: "Volatility 25" }, { id: "R_50", nome: "Volatility 50" },
     { id: "R_75", nome: "Volatility 75" }, { id: "R_100", nome: "Volatility 100" },
-    // JUMP INDICES
     { id: "JD10", nome: "Jump 10" }, { id: "JD25", nome: "Jump 25" },
     { id: "JD50", nome: "Jump 50" }, { id: "JD75", nome: "Jump 75" },
     { id: "JD100", nome: "Jump 100" },
-    // BOOM & CRASH
     { id: "BOOM300", nome: "Boom 300" }, { id: "BOOM500", nome: "Boom 500" },
     { id: "BOOM1000", nome: "Boom 1000" }, { id: "CRASH300", nome: "Crash 300" },
     { id: "CRASH500", nome: "Crash 500" }, { id: "CRASH1000", nome: "Crash 1000" },
-    // FOREX REAL
     { id: "frxEURUSD", nome: "EUR/USD" }, { id: "frxGBPUSD", nome: "GBP/USD" },
     { id: "frxUSDJPY", nome: "USD/JPY" }, { id: "frxAUDUSD", nome: "AUD/USD" },
     { id: "frxUSDCAD", nome: "USD/CAD" }, { id: "frxUSDCHF", nome: "USD/CHF" },
     { id: "frxEURGBP", nome: "EUR/GBP" }, { id: "frxEURJPY", nome: "EUR/JPY" },
-    { id: "frxGBPJPY", nome: "GBP/JPY" }, { id: "frxAUDJPY", nome: "AUD/JPY" },
-    { id: "frxEURCAD", nome: "EUR/CAD" }, { id: "frxXAUUSD", nome: "OURO (XAU/USD)" },
-    // CRIPTOMOEDAS
+    { id: "frxGBPJPY", nome: "GBP/JPY" }, { id: "frxXAUUSD", nome: "OURO (XAU/USD)" },
     { id: "cryBTCUSD", nome: "BITCOIN (BTC)" }, { id: "cryETHUSD", nome: "ETHEREUM (ETH)" },
-    { id: "cryLTCUSD", nome: "LITECOIN (LTC)" }, { id: "cryXRPUSD", nome: "RIPPLE (XRP)" },
-    { id: "cryBCHUSD", nome: "BITCOIN CASH" }
+    { id: "cryLTCUSD", nome: "LITECOIN (LTC)" }, { id: "cryXRPUSD", nome: "RIPPLE (XRP)" }
 ];
 
 let globalStats = { analises: 0, winDireto: 0, winGales: 0, loss: 0 };
@@ -56,9 +49,7 @@ function inicializarMotores() {
 
 function conectarDeriv() {
     wsDeriv = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-    wsDeriv.on('open', () => {
-        slots.forEach(id => { if(id !== "NONE") wsDeriv.send(JSON.stringify({ ticks: id })); });
-    });
+    wsDeriv.on('open', () => { slots.forEach(id => { if(id !== "NONE") wsDeriv.send(JSON.stringify({ ticks: id })); }); });
     wsDeriv.on('message', (data) => {
         const res = JSON.parse(data);
         if (res.tick) processarTick(res.tick.symbol, res.tick.quote);
@@ -72,18 +63,15 @@ async function enviarTelegram(msg, comBotao = true) {
     try { await axios.post(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, payload); } catch (e) {}
 }
 
-// RELATÓRIO DE PERFORMANCE (A CADA 5 MINUTOS)
-setInterval(() => {
+function gerarPlacarMsg(id) {
+    const m = motores[id];
     const totalW = globalStats.winDireto + globalStats.winGales;
-    const ef = globalStats.analises > 0 ? ((totalW / globalStats.analises) * 100).toFixed(1) : 0;
-    let ranking = Object.values(motores).filter(m => (m.wins + m.loss) > 0).sort((a,b) => b.wins - a.wins).slice(0, 4).map((item, i) => `${i+1}º ${item.nome}: ${item.wins}W`).join("\n");
-    const msg = `📊 *RELATÓRIO DE PERFORMANCE*\n\n📈 *GERAL:*\n• Análises: ${globalStats.analises}\n• Wins Diretos: ${globalStats.winDireto}\n• Wins c/ Gale: ${globalStats.winGales}\n• Reds Total: ${globalStats.loss}\n\n🏆 *RANKING ATIVOS:*\n${ranking || "Sem operações"}\n\n🔥 *EFICIÊNCIA: ${ef}%*`;
-    enviarTelegram(msg, false);
-}, 300000);
+    const assert = globalStats.analises > 0 ? ((totalW / globalStats.analises) * 100).toFixed(1) : "0";
+    return `\n\n━━━━━━━━━━━━━━━\n📊 *ATIVO:* ${m.wins}W - ${m.loss}L\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L (${assert}%)`;
+}
 
 function processarTick(id, preco) {
-    const m = motores[id];
-    if (!m) return;
+    const m = motores[id]; if (!m) return;
     m.precoAtual = preco;
     const segs = new Date().getSeconds();
     const txtSinal = (s) => s === "CALL" ? "🟢 COMPRA (CALL)" : "🔴 VENDA (PUT)";
@@ -99,7 +87,7 @@ function processarTick(id, preco) {
         let alvo = diffVelaAnterior * 0.20; 
         if ((m.sinalPendente === "CALL" && preco <= (m.aberturaVela - alvo)) || (m.sinalPendente === "PUT" && preco >= (m.aberturaVela + alvo))) {
             m.operacaoAtiva = m.sinalPendente; m.precoEntrada = preco; m.tempoOp = (60 - segs); m.buscandoTaxa = false;
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 *CLIQUE AGORA*\n\n💎 *Ativo:* ${m.nome}\n🎯 *Sinal:* ${txtSinal(m.operacaoAtiva)}`);
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n\n💎 *Ativo:* ${m.nome}\n🎯 *Sinal:* ${txtSinal(m.operacaoAtiva)}${gerarPlacarMsg(id)}`);
         }
     }
 
@@ -108,7 +96,7 @@ function processarTick(id, preco) {
         if (m.forca >= 70) m.sinalPendente = "CALL"; else if (m.forca <= 30) m.sinalPendente = "PUT"; else m.sinalPendente = null;
         if (m.sinalPendente && !m.operacaoAtiva) {
             m.buscandoTaxa = true;
-            enviarTelegram(`⚠️ *ANALISANDO:* ${m.nome}\n🔥 *FORÇA:* ${m.forca.toFixed(0)}%\n🎯 *SINAL:* ${txtSinal(m.sinalPendente)}\n⏳ *AGUARDANDO TAXA...*`);
+            enviarTelegram(`⚠️ *ANALISANDO:* ${m.nome}\n🔥 *FORÇA:* ${m.forca.toFixed(0)}%\n🎯 *SINAL:* ${txtSinal(m.sinalPendente)}\n⏳ *AGUARDANDO TAXA...*${gerarPlacarMsg(id)}`);
         }
     }
 
@@ -116,64 +104,60 @@ function processarTick(id, preco) {
         m.tempoOp--;
         if (m.tempoOp <= 0) {
             const win = (m.operacaoAtiva === "CALL" && preco > m.precoEntrada) || (m.operacaoAtiva === "PUT" && preco < m.precoEntrada);
-            const sinalBackup = m.operacaoAtiva;
+            const sinalBkp = m.operacaoAtiva;
             if (win) {
                 if (m.galeAtual === 0) globalStats.winDireto++; else globalStats.winGales++;
                 m.wins++; globalStats.analises++;
-                enviarTelegram(`✅ *WIN: ${m.nome}*`, false);
+                enviarTelegram(`✅ *WIN: ${m.nome}*${gerarPlacarMsg(id)}`, false);
                 m.operacaoAtiva = null; m.galeAtual = 0;
             } else if (m.galeAtual < 2) {
                 m.galeAtual++; m.precoEntrada = preco; m.tempoOp = 60;
-                enviarTelegram(`🔄 *GALE ${m.galeAtual}: ${m.nome}*\n🎯 *SINAL:* ${txtSinal(sinalBackup)}`);
+                enviarTelegram(`🔄 *GALE ${m.galeAtual}: ${m.nome}*\n🎯 *SINAL:* ${txtSinal(sinalBkp)}${gerarPlacarMsg(id)}`);
             } else {
                 m.loss++; globalStats.loss++; globalStats.analises++;
-                enviarTelegram(`❌ *RED: ${m.nome}*`, false);
+                enviarTelegram(`❌ *RED: ${m.nome}*${gerarPlacarMsg(id)}`, false);
                 m.operacaoAtiva = null; m.galeAtual = 0;
             }
         }
     }
 }
 
+setInterval(() => {
+    if (globalStats.analises === 0) return;
+    const totalW = globalStats.winDireto + globalStats.winGales;
+    const assert = ((totalW / globalStats.analises) * 100).toFixed(1);
+    let rank = Object.values(motores).filter(m => (m.wins + m.loss) > 0).sort((a,b) => b.wins - a.wins).slice(0, 3).map((it, i) => `${i+1}º ${it.nome}: ${it.wins}W`).join("\n");
+    enviarTelegram(`📊 *RELATÓRIO DE PERFORMANCE*\n\n🌍 *GLOBAL:* ${totalW}W - ${globalStats.loss}L\n🎯 *ASSERTIVIDADE:* ${assert}%\n🏆 *TOP ATIVOS:*\n${rank}`, false);
+}, 300000);
+
+app.get('/api/status', (req, res) => res.json({ slots, motores, globalStats }));
 app.get('/mudar/:index/:novoId', (req, res) => {
     const { index, novoId } = req.params;
     const antigoId = slots[index];
     if (wsDeriv && wsDeriv.readyState === WebSocket.OPEN) {
         if (antigoId !== "NONE") wsDeriv.send(JSON.stringify({ forget: antigoId }));
-        slots[index] = novoId;
-        inicializarMotores();
+        slots[index] = novoId; inicializarMotores();
         if (novoId !== "NONE") wsDeriv.send(JSON.stringify({ ticks: novoId }));
     }
     res.redirect('/');
 });
 
 app.get('/', (req, res) => {
-    let optionsHtml = LISTA_ATIVOS.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
-    let cardsHtml = slots.map((id, i) => {
-        const m = id !== "NONE" ? motores[id] : { nome: "DESATIVADO", precoAtual: 0, forca: 50 };
-        return `<div style="background:#111418; padding:15px; border-radius:15px; border:1px solid #333; opacity:${id === 'NONE' ? '0.5' : '1'}">
-            <div style="font-size:11px; color:#1e90ff">${m.nome}</div>
-            <div style="font-size:20px; font-weight:bold; margin:8px 0">${id === "NONE" ? "---" : m.precoAtual.toFixed(4)}</div>
-            <div style="height:4px; background:#222; margin-bottom:10px; border-radius:2px; overflow:hidden">
-                <div style="width:${m.forca}%; height:100%; background:linear-gradient(90deg, #ff3355, #00ff88)"></div>
-            </div>
-            <select onchange="window.location.href='/mudar/${i}/'+this.value" style="background:#000; color:#fff; border:1px solid #444; width:100%; font-size:11px">
-                <option value="">Trocar Ativo...</option>${optionsHtml}
-            </select>
-        </div>`;
-    }).join('');
-
-    res.send(`<!DOCTYPE html><html><head><title>KCM V19</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="3">
-    <style>body{background:#05070a; color:white; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; padding:15px;}</style></head>
+    let options = LISTA_ATIVOS.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+    res.send(`<!DOCTYPE html><html><head><title>KCM V19</title><meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body{background:#05070a; color:white; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; padding:15px;}
+    .card{background:#111418; padding:15px; border-radius:15px; border:1px solid #333; margin-bottom:10px; transition:0.3s;}</style>
     <body><h3>K.C<span style="color:#1e90ff">📈</span>M ULTIMATE</h3>
     <div style="width:100%; max-width:450px; background:#0a0c0f; border:2px solid #1e90ff; border-radius:20px; padding:15px">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px">${cardsHtml}</div>
-        <div style="background:#000; padding:10px; border-radius:10px; border:1px solid #222; font-size:12px">
-            <div style="color:#1e90ff; font-weight:bold; margin-bottom:8px">📊 PLACAR: ${globalStats.winDireto + globalStats.winGales}W - ${globalStats.loss}L</div>
-            ${slots.filter(id => id !== "NONE").map(id => `<div>${motores[id].nome}: <span style="color:#00ff88">${motores[id].wins}W</span></div>`).join('')}
-        </div>
-    </div></body></html>`);
+        <div id="grid-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:10px">${slots.map((id, i) => `
+            <div class="card" id="card-${i}">
+                <div style="font-size:10px; color:#1e90ff" id="nome-${i}">Carregando...</div>
+                <div style="font-size:16px; font-weight:bold; margin:5px 0" id="preco-${i}">---</div>
+                <select onchange="window.location.href='/mudar/${i}/'+this.value" style="width:100%; background:#000; color:#fff; font-size:10px"><option value="">Trocar...</option>${options}</select>
+            </div>`).join('')}</div>
+        <div id="placar" style="background:#000; padding:10px; border-radius:10px; margin-top:10px; font-size:12px; color:#1e90ff; text-align:center">📊 PLACAR: 0W - 0L</div>
+    </div>
+    <script>async function up(){const r=await fetch('/api/status'); const d=await r.json(); d.slots.forEach((id,i)=>{const m=d.motores[id]||{nome:"OFF", precoAtual:0}; document.getElementById('nome-'+i).innerText=m.nome; document.getElementById('preco-'+i).innerText=id==="NONE"?"---":m.precoAtual.toFixed(4); document.getElementById('card-'+i).style.opacity=id==="NONE"?"0.5":"1";}); document.getElementById('placar').innerText="📊 PLACAR GLOBAL: "+(d.globalStats.winDireto+d.globalStats.winGales)+"W - "+d.globalStats.loss+"L";} setInterval(up, 2000);</script></body></html>`);
 });
 
-inicializarMotores();
-conectarDeriv();
-app.listen(process.env.PORT || 3000);
+inicializarMotores(); conectarDeriv(); app.listen(process.env.PORT || 3000);
