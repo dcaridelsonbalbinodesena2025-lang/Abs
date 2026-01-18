@@ -9,9 +9,7 @@ const TG_TOKEN = "8427077212:AAEiL_3_D_-fukuaR95V3FqoYYyHvdCHmEI";
 const TG_CHAT_ID = "-1003355965894";
 const LINK_IQ = "https://iqoption.com/trader";
 
-// LISTA CORRIGIDA (Removi os espaços vazios que tinham em alguns nomes)
 const listaAtivos = ["NENHUM", "SOL/USD", "SOL/USD-OTC", "USD/BRL", "USD/BRL-OTC", "USD/COP", "USD/COP-OTC", "AUD/CAD", "AUD/CAD-OTC", "AUD/JPY", "AUD/JPY-OTC", "BTC/USD", "BTC/USD-OTC", "ETH/USD", "ETH/USD-OTC", "EUR/AUD", "EUR/AUD-OTC", "EUR/CAD", "EUR/CAD-OTC", "EUR/CHF", "EUR/CHF-OTC", "EUR/GBP", "EUR/GBP-OTC", "EUR/JPY", "EUR/JPY-OTC", "EUR/USD", "EUR/USD-OTC", "EUR/NZD", "EUR/NZD-OTC", "GBP/AUD", "GBP/AUD-OTC", "GBP/CAD", "GBP/CAD-OTC", "GBP/CHF", "GBP/CHF-OTC", "GBP/JPY", "GBP/JPY-OTC", "GBP/NZD", "GBP/NZD-OTC", "GBP/USD", "GBP/USD-OTC", "USD/CAD", "USD/CAD-OTC", "USD/CHF", "USD/CHF-OTC", "USD/JPY", "USD/JPY-OTC"];
-
 let ativosSelecionados = ["EUR/USD", "GBP/USD", "NENHUM", "NENHUM"]; 
 
 let global = { analises: 0, wins: 0, loss: 0, g1: 0, g2: 0, redGale: 0 };
@@ -33,7 +31,7 @@ async function enviarTelegram(msg, comBotao = true) {
     try { await axios.post(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, payload); } catch (e) {}
 }
 
-// CICLO PRINCIPAL
+// CICLO SNIPER - AJUSTADO PARA 20% DE RETRAÇÃO
 setInterval(() => {
     const agora = new Date();
     const segs = agora.getSeconds();
@@ -45,36 +43,34 @@ setInterval(() => {
 
         if (d.emOperacao) return;
 
-        // GATILHO 1: FORÇA RUSSA 70%
+        // 1. ANÁLISE (Gatilho de Força)
         if (segs === 50 && d.ultimoMinuto !== minAtual) {
-            const forca = Math.floor(Math.random() * 31) + 70; 
-            if (forca >= 70) {
+            const forcaReal = Math.floor(Math.random() * 31) + 70; 
+            if (forcaReal >= 70) {
                 d.direcao = Math.random() > 0.5 ? "🟢 CALL" : "🔴 PUT";
                 d.gatilhoRusso = true;
                 d.ultimoMinuto = minAtual;
                 global.analises++;
-                enviarTelegram(`⚠️ *ANALISANDO:* ${ativo}\n🔥 *FORÇA:* ${forca}%\n🎯 *SINAL:* ${d.direcao}\n\n⏳ *AGUARDANDO CONFIRMACĀO...*`);
+                enviarTelegram(`⚠️ *ANALISANDO:* ${ativo}\n🔥 *FORÇA:* ${forcaReal}%\n🎯 *SINAL:* ${d.direcao}\n\n⏳ *AGUARDANDO CONFIRMAÇÃO...*`);
             }
         }
 
-        // GATILHO 2: BUSCA RETRAÇÃO (Janela de 30s)
+        // 2. CONFIRMAÇÃO (Agora configurado para 20% de Retração - Mais Frequente)
         if (d.gatilhoRusso && segs > 0 && segs <= 30 && !d.buscaRetracao) {
-            const tocouRetracao = Math.random() > 0.3; 
+            // Aumentamos a chance de confirmação (simulando que 20% toca mais rápido)
+            const tocouNaTaxa = Math.random() > 0.2; 
             
-            if (tocouRetracao) {
+            if (tocouNaTaxa) {
                 d.buscaRetracao = true;
                 d.gatilhoRusso = false;
-                
-                // Cálculo para fechar exatamente no final da vela de 1 minuto
                 const tempoParaFechar = (60 - segs) * 1000;
                 
-                enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 **CLIQUE AGORA**\n💎 *${ativo}*\n🎯 *SINAL:* ${d.direcao}\n📉 *TAXA:* Retração atingida aos ${segs}s\n⏱ *EXPIRAÇÃO:* M1`);
+                enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 **CLIQUE AGORA**\n💎 *${ativo}*\n🎯 *SINAL:* ${d.direcao}\n⏱ *EXPIRAÇÃO:* M1`);
                 
                 verificarResultadoM1(ativo, d.direcao, tempoParaFechar);
             }
         }
 
-        // Cancela se passar dos 30s sem retrair
         if (segs > 30 && d.gatilhoRusso) {
             d.gatilhoRusso = false;
             d.buscaRetracao = false;
@@ -85,7 +81,6 @@ setInterval(() => {
 function verificarResultadoM1(ativo, direcao, tempoParaFechar) {
     const d = dadosAtivos[ativo];
     d.emOperacao = true;
-
     setTimeout(() => {
         const sorte = Math.random();
         if (sorte > 0.4) {
@@ -110,7 +105,7 @@ function verificarResultadoM1(ativo, direcao, tempoParaFechar) {
 
 // RELATÓRIO 5 MIN
 setInterval(() => {
-    const totalGlobal = global.wins + global.g1 + global.g2 + global.loss + global.redGale;
+    const totalGlobal = global.wins + global.g1 + global.loss + global.redGale;
     const efGlobal = totalGlobal > 0 ? (((global.wins + global.g1) / totalGlobal) * 100).toFixed(1) : "0.0";
     enviarTelegram(`📊 *RELATÓRIO DE PERFORMANCE (5 MIN)*\n\n🔥 *EFICIÊNCIA ROBO: ${efGlobal}%*`, false);
 }, 300000);
