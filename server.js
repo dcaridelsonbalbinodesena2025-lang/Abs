@@ -67,12 +67,20 @@ const LISTA_ATIVOS = [
     { id: "cryDSHUSD", nome: "💨 DASH (DASH/USD)" }
 ];
 
-
 let statsDiario = { analises: 0, winDireto: 0, lossDireto: 0, winGale: 0, lossGale: 0, ativos: {} };
 let motores = {};
 let slots = ["1HZ100V", "R_100", "frxEURUSD", "1HZ10V"];
 
-// --- ROTAS DO PAINEL ---
+// --- FUNÇÃO DE HORÁRIO BR ---
+function getHoraBR(offsetSegundos = 0) {
+    const data = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+    if (offsetSegundos) data.setSeconds(data.getSeconds() + offsetSegundos);
+    return data.getHours().toString().padStart(2, '0') + ":" + 
+           data.getMinutes().toString().padStart(2, '0') + ":" + 
+           data.getSeconds().toString().padStart(2, '0');
+}
+
+// --- ROTAS DO PAINEL (VISUAL INDEX) ---
 app.get('/', (req, res) => {
     res.send(`
     <!DOCTYPE html>
@@ -114,7 +122,7 @@ app.get('/', (req, res) => {
                 <div class="card">
                     <div class="stat-label">FORÇA DO MERCADO</div>
                     <div class="thermometer-wrap"><div class="thermometer-fill" id="therm-${i}"></div></div>
-                    <div class="status-box"><div id="status-${i}" style="font-size:9px; font-weight:bold; color:#00ff88;">ANALISANDO...</div></div>
+                    <div class="status-box"><div id="status-${i}" style="font-size:9px; font-weight:bold; color:#888;">ANALISANDO...</div></div>
                     <div class="timer-large" id="timer-${i}">00</div>
                     <select class="select-ativo" onchange="mudarAtivo(${i}, this.value)">
                         ${LISTA_ATIVOS.map(a => `<option value="${a.id}" ${slots[i] === a.id ? 'selected' : ''}>${a.nome}</option>`).join('')}
@@ -178,7 +186,8 @@ app.post('/selecionar-ativo', (req, res) => {
     res.json({ success: true });
 });
 
-// --- SUA LÓGICA ORIGINAL DE PROCESSAMENTO ---
+// --- LÓGICA DO ROBÔ (MENSAGENS COMPLETAS) ---
+
 function inicializarMotores() {
     slots.forEach(id => {
         if (id !== "NONE" && !motores[id]) {
@@ -214,12 +223,17 @@ function processarTick(id, preco) {
     if (!m.operacaoAtiva && !m.buscandoTaxa) {
         if (segs === 0 && m.aberturaVelaAtual !== preco) {
             let dirPrevista = m.forca >= 50 ? "🟢 COMPRA" : "🔴 VENDA";
-            enviarTelegram(`🔍 *BUSCANDO POSSÍVEL ENTRADA*\n💎 Ativo: ${m.nome}\n🎯 Direção: ${dirPrevista}`);
+            // MENSAGEM DE BUSCA
+            enviarTelegram(`🔍 *BUSCANDO POSSÍVEL ENTRADA*\n💎 Ativo: ${m.nome}\n🎯 Direção: ${dirPrevista}\n⏰ Possível entrada às: ${getHoraBR().slice(0,5)}:00`);
+            
             setTimeout(() => {
                 if (m.forca >= FORCA_MINIMA || m.forca <= (100 - FORCA_MINIMA)) {
                     m.sinalPendente = m.forca >= FORCA_MINIMA ? "CALL" : "PUT";
                     m.buscandoTaxa = true;
-                    enviarTelegram(`⏳ *AGUARDANDO CONFIRMAÇÃO*\n💎 Ativo: ${m.nome}`);
+                    // MENSAGEM DE AGUARDANDO TAXA
+                    enviarTelegram(`⏳ *AGUARDANDO CONFIRMAÇÃO DA ENTRADA*\n💎 Ativo: ${m.nome}\n🎯 Direção: ${m.sinalPendente === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n⏰ Entrada alvo: ${getHoraBR().slice(0,5)}:00`);
+                } else {
+                    enviarTelegram(`⚠️ *OPERAÇÃO ABORTADA*\n💎 Ativo: ${m.nome}\n_(Aguardando nova oportunidade)_`);
                 }
             }, 1200);
             m.corpoVelaAnterior = Math.abs(preco - m.aberturaVelaAtual);
@@ -229,39 +243,22 @@ function processarTick(id, preco) {
 
     if (m.buscandoTaxa && segs < 30) {
         const dist = m.corpoVelaAnterior * (PCT_RECUO_TAXA / 100);
-        if ((m.sinalPendente === "CALL" && preco <= (m.fechamentoVelaAnterior - dist)) || 
-            (m.sinalPendente === "PUT" && preco >= (m.fechamentoVelaAnterior + dist))) {
+        let bateuTaxa = (m.sinalPendente === "CALL" && preco <= (m.fechamentoVelaAnterior - dist)) || 
+                        (m.sinalPendente === "PUT" && preco >= (m.fechamentoVelaAnterior + dist));
+        
+        if (bateuTaxa) {
             m.buscandoTaxa = false; m.operacaoAtiva = m.sinalPendente; m.precoEntrada = preco; m.tempoOp = 60;
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 Ativo: ${m.nome}`);
+            // MENSAGEM DE ENTRADA CONFIRMADA
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 CLIQUE AGORA\n💎 Ativo: ${m.nome}\n🎯 Direção: ${m.operacaoAtiva === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n⏰ Início às: ${getHoraBR()}\n🏁 Fim às: ${getHoraBR(60)}`);
         }
+    }
+
+    if (segs >= 30 && m.buscandoTaxa) {
+        enviarTelegram(`⚠️ *OPERAÇÃO ABORTADA*\n💎 Ativo: ${m.nome}\nPreço não atingiu a taxa.`);
+        m.buscandoTaxa = false; m.sinalPendente = null;
     }
 
     if (m.tempoOp > 0) {
         m.tempoOp--;
         if (m.tempoOp <= 0) {
-            const win = (m.operacaoAtiva === "CALL" && preco > m.precoEntrada) || (m.operacaoAtiva === "PUT" && preco < m.precoEntrada);
-            if (win) {
-                statsDiario.analises++; statsDiario.winDireto++;
-                enviarTelegram(`✅ *GREEN: ${m.nome}*`);
-                m.operacaoAtiva = null; m.galeAtual = 0;
-            } else if (m.galeAtual < 2) {
-                m.galeAtual++; m.precoEntrada = preco; m.tempoOp = 60;
-                enviarTelegram(`🔄 *GALE ${m.galeAtual}: ${m.nome}*`);
-            } else {
-                statsDiario.analises++; statsDiario.lossGale++;
-                enviarTelegram(`❌ *LOSS FINAL: ${m.nome}*`);
-                m.operacaoAtiva = null; m.galeAtual = 0;
-            }
-        }
-    }
-}
-
-let ws;
-function conectar(){
-    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-    ws.on('open', () => slots.forEach(id => id!=="NONE" && ws.send(JSON.stringify({ticks:id}))));
-    ws.on('message', data => { const r=JSON.parse(data); if(r.tick) processarTick(r.tick.symbol, r.tick.quote); });
-    ws.on('close', () => setTimeout(conectar, 5000));
-}
-
-inicializarMotores(); conectar(); app.listen(process.env.PORT || 3000);
+            const win = (m.operacaoAtiva
