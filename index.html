@@ -1,114 +1,97 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>K.C.M IQ OPTION V19 - CONTROLE MESTRE</title>
+    <title>K.C.M V19 - PAINEL DE CONTROLE</title>
     <style>
-        :root { 
-            --neon-blue: #1e90ff; --neon-green: #00ff88; --neon-red: #ff3355; 
-            --bg-dark: #05070a; --royal-blue: #0047AB;
-        }
+        :root { --neon-blue: #1e90ff; --neon-green: #00ff88; --neon-red: #ff3355; --bg-dark: #05070a; --royal-blue: #0047AB; }
         body { background: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .logo { font-size: 22px; font-weight: 900; color: #fff; margin: 10px 0; }
-        .logo span { color: var(--neon-blue); font-style: italic; }
-        .painel-global { background: linear-gradient(180deg, #111418 0%, #05070a 100%); border: 2px solid var(--royal-blue); border-radius: 15px; width: 95%; max-width: 600px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(0,71,171,0.3); }
+        .logo span { color: var(--neon-blue); }
+        .painel-global { background: #111418; border: 2px solid var(--royal-blue); border-radius: 15px; width: 95%; max-width: 600px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,71,171,0.3); }
         .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; }
-        .stat-label { font-size: 9px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+        .stat-label { font-size: 9px; color: #888; text-transform: uppercase; }
         .stat-val { font-size: 18px; font-weight: bold; }
         .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 600px; }
-        .card { background: #111418; border-radius: 20px; padding: 12px; border: 1px solid #1e2228; position: relative; }
-        .thermometer-wrap { width: 100%; height: 8px; background: #222; border-radius: 4px; margin: 8px 0; overflow: hidden; border: 1px solid #333; }
-        .thermometer-fill { height: 100%; width: 50%; transition: 0.4s; background: linear-gradient(90deg, #ff3355, #f0b90b, #00ff88); }
-        .status-box { width: 100%; height: 40px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; text-align: center; }
-        .timer-large { font-size: 38px; font-weight: bold; text-align: center; color: #fff; margin: 5px 0; }
-        .select-ativo { background: #0d0f12; color: #fff; border: 1px solid var(--royal-blue); font-size: 12px; width: 100%; padding: 8px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
+        .card { background: #111418; border-radius: 20px; padding: 12px; border: 1px solid #1e2228; text-align: center; }
+        .thermometer-wrap { width: 100%; height: 8px; background: #222; border-radius: 4px; margin: 8px 0; overflow: hidden; }
+        .thermometer-fill { height: 100%; width: 50%; transition: 0.5s; background: linear-gradient(90deg, #ff3355, #00ff88); }
+        .timer-large { font-size: 32px; font-weight: bold; margin: 5px 0; color: var(--neon-blue); }
+        .select-ativo { background: #000; color: #fff; border: 1px solid var(--royal-blue); width: 100%; padding: 8px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="logo">K.C<span>📈</span>M IQ OPTION V19</div>
+    <div class="logo">K.C<span>📈</span>M DERIV V19</div>
     <div class="painel-global">
         <div class="stats-row">
-            <div><span class="stat-label">Análises</span><span class="stat-val" id="g-analises">0</span></div>
-            <div><span class="stat-label">Wins</span><span class="stat-val" style="color:var(--neon-green)" id="g-wins">0</span></div>
-            <div><span class="stat-label">Loss</span><span class="stat-val" style="color:var(--neon-red)" id="g-loss">0</span></div>
-            <div><span class="stat-label">Eficiência</span><span class="stat-val" id="g-perc">0%</span></div>
+            <div><div class="stat-label">Análises</div><div class="stat-val" id="g-analises">0</div></div>
+            <div><div class="stat-label">Wins</div><div class="stat-val" style="color:var(--neon-green)" id="g-wins">0</div></div>
+            <div><div class="stat-label">Loss</div><div class="stat-val" style="color:var(--neon-red)" id="g-loss">0</div></div>
+            <div><div class="stat-label">Assert.</div><div class="stat-val" id="g-perc">0%</div></div>
         </div>
     </div>
-    <div class="grid-container" id="grid"></div>
+    <div class="grid-container" id="grid-content"></div>
 
 <script>
-    // BUSCA A LISTA UMA ÚNICA VEZ E GUARDA PARA TODOS OS CAMPOS
-    async function carregarListaParaTodos() {
+    // ✅ LINK DA SUA RENDER
+    const URL_RENDER = "https://abs-uews.onrender.com";
+
+    const ATIVOS = [
+        {id: "1HZ10V", nome: "Volatility 10 (1s)"},
+        {id: "1HZ25V", nome: "Volatility 25 (1s)"},
+        {id: "1HZ50V", nome: "Volatility 50 (1s)"},
+        {id: "1HZ75V", nome: "Volatility 75 (1s)"},
+        {id: "1HZ100V", nome: "Volatility 100 (1s)"},
+        {id: "R_100", nome: "Volatility 100"},
+        {id: "ST50", nome: "Step Index"},
+        {id: "frxEURUSD", nome: "EUR/USD"},
+        {id: "NONE", nome: "❌ DESATIVADO"}
+    ];
+
+    async function mudar(index, ativo) {
         try {
-            const res = await fetch('/lista-ativos');
-            const lista = await res.json();
+            await fetch(`${URL_RENDER}/selecionar-ativo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                mode: 'cors', 
+                body: JSON.stringify({ index, ativo })
+            });
+        } catch(e) { console.error("Erro ao mudar ativo"); }
+    }
+
+    const grid = document.getElementById('grid-content');
+    for(let i=0; i<4; i++) {
+        grid.innerHTML += `
+            <div class="card">
+                <div class="stat-label">FORÇA</div>
+                <div class="thermometer-wrap"><div id="therm-${i}" class="thermometer-fill"></div></div>
+                <div id="status-${i}" style="font-size:10px; color:#aaa;">ANALISANDO...</div>
+                <div class="timer-large" id="timer-${i}">00</div>
+                <select class="select-ativo" onchange="mudar(${i}, this.value)">
+                    ${ATIVOS.map(a => `<option value="${a.id}">${a.nome}</option>`).join('')}
+                </select>
+            </div>`;
+    }
+
+    async function atualizar() {
+        try {
+            const res = await fetch(`${URL_RENDER}/api-dados`);
+            const data = await res.json();
+            document.getElementById('g-analises').innerText = data.global.analises;
+            document.getElementById('g-wins').innerText = data.global.wins;
+            document.getElementById('g-loss').innerText = data.global.loss;
+            document.getElementById('g-perc').innerText = data.global.eficiencia + "%";
             
-            for (let i = 0; i < 4; i++) {
-                const sel = document.getElementById(`select-${i}`);
-                if (sel) {
-                    sel.innerHTML = ''; 
-                    lista.forEach(ativo => {
-                        let opt = document.createElement('option');
-                        opt.value = ativo;
-                        opt.innerText = ativo;
-                        sel.appendChild(opt);
-                    });
-                }
-            }
-        } catch (e) { console.error("Erro ao carregar lista"); }
-    }
-
-    async function mudarAtivo(index, ativo) {
-        await fetch('/selecionar-ativo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ index, ativo })
-        });
-    }
-
-    function criarCards() {
-        const grid = document.getElementById('grid');
-        grid.innerHTML = '';
-        for (let i = 0; i < 4; i++) {
-            grid.innerHTML += `
-                <div class="card">
-                    <div class="stat-label">FORÇA DO MERCADO</div>
-                    <div class="thermometer-wrap"><div class="thermometer-fill" id="therm-${i}"></div></div>
-                    <div class="status-box"><div id="status-${i}" style="font-size:9px; font-weight:bold; color:#888;">ANALISANDO...</div></div>
-                    <div class="timer-large" id="timer-${i}">00</div>
-                    <select class="select-ativo" id="select-${i}" onchange="mudarAtivo(${i}, this.value)">
-                        <option>Carregando...</option>
-                    </select>
-                </div>`;
-            iniciarInterface(i);
-        }
-        // Carrega a lista uma única vez para preencher os 4 blocos
-        carregarListaParaTodos();
-    }
-
-    function iniciarInterface(i) {
-        setInterval(async () => {
             let segs = new Date().getSeconds();
-            document.getElementById(`timer-${i}`).innerText = (60 - segs).toString().padStart(2, '0');
-            
-            try {
-                const res = await fetch('/dados');
-                const dados = await res.json();
-                if (dados[i]) {
-                    document.getElementById(`therm-${i}`).style.width = dados[i].forca + "%";
-                    document.getElementById('g-wins').innerText = dados.reduce((a, b) => a + b.wins, 0);
-                    document.getElementById('g-loss').innerText = dados.reduce((a, b) => a + b.loss, 0);
-                    let total = dados.reduce((a, b) => a + b.wins + b.loss, 0);
-                    document.getElementById('g-analises').innerText = total;
-                    let perc = total > 0 ? ((dados.reduce((a, b) => a + b.wins, 0) / total) * 100).toFixed(1) : 0;
-                    document.getElementById('g-perc').innerText = perc + "%";
-                }
-            } catch (e) {}
-        }, 2000); // Aumentei para 2 segundos para não sobrecarregar o Render
+            data.slots.forEach((s, i) => {
+                document.getElementById('therm-'+i).style.width = s.forca + "%";
+                document.getElementById('timer-'+i).innerText = (60 - segs).toString().padStart(2, '0');
+                document.getElementById('status-'+i).innerText = s.status;
+            });
+        } catch(e) { }
     }
-
-    window.onload = criarCards;
+    setInterval(atualizar, 1000);
 </script>
 </body>
 </html>
