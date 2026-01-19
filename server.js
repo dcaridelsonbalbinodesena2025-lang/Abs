@@ -70,48 +70,59 @@ let statsSemanal = {
 let motores = {};
 let slots = ["1HZ100V", "R_100", "frxEURUSD", "1HZ10V"];
 
-// --- PAINEL INTERATIVO (O PAINEL QUE ENVIA COMANDO AO ROBÔ) ---
+// --- NOVO PAINEL VISUAL INTEGRADO ---
 app.get('/', (req, res) => {
-    // Se o painel enviar um novo ID para um slot, a gente troca aqui
     if (req.query.slotIdx !== undefined && req.query.ativoId) {
-        const idx = parseInt(req.query.slotIdx);
-        const novoId = req.query.ativoId;
-        slots[idx] = novoId;
-        reiniciarWS(); // Força o robô a trocar o par
+        slots[parseInt(req.query.slotIdx)] = req.query.ativoId;
+        reiniciarWS();
     }
 
-    let html = `<html><head><title>ABS-UEWS DASHBOARD</title>
+    let html = `<!DOCTYPE html><html><head><title>K.C MULTI-CUSTOM V19</title>
     <style>
-        body { font-family: sans-serif; background: #0b0e11; color: white; display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 20px; }
-        .card { background: #1e2329; padding: 20px; border-radius: 12px; border-top: 4px solid #f0b90b; position: relative; }
-        .card.trade { border-top-color: #2ebd85; box-shadow: 0 0 15px rgba(46, 189, 133, 0.4); }
-        h2 { margin: 0; font-size: 14px; color: #f0b90b; }
-        .placar { font-size: 24px; font-weight: bold; margin: 10px 0; }
-        .info { color: #848e9c; font-size: 11px; margin-bottom: 10px; }
-        select { background: #2b2f36; color: white; border: 1px solid #444; padding: 5px; border-radius: 4px; width: 100%; cursor: pointer; }
+        body { background: #060606; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { color: #00ff88; text-shadow: 0 0 10px #00ff88; margin-bottom: 25px; font-weight: bold; font-size: 22px; letter-spacing: 2px; }
+        .container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; width: 100%; max-width: 850px; }
+        .card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 18px; position: relative; border-left: 4px solid #00ff88; }
+        .card.active { border-left-color: #f0b90b; box-shadow: 0 0 15px rgba(240, 185, 11, 0.2); }
+        .label { font-size: 10px; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+        .price { font-size: 26px; font-weight: bold; font-family: monospace; color: #fff; margin: 8px 0; }
+        .bar-bg { background: #222; height: 10px; border-radius: 5px; margin: 12px 0; overflow: hidden; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #00ff88); transition: width 0.6s cubic-bezier(0.1, 0.7, 1.0, 0.1); }
+        select { background: #1a1a1a; color: #00ff88; border: 1px solid #333; padding: 8px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .stats { display: flex; justify-content: space-between; font-size: 12px; margin-top: 15px; border-top: 1px solid #222; padding-top: 10px; }
+        .win { color: #00ff88; } .loss { color: #ff4444; }
     </style>
-    <script>setTimeout(() => { if(!window.location.search) location.reload(); }, 5000);</script>
-    </head><body>`;
+    <script>setTimeout(() => { if(!window.location.search) location.reload(); }, 2000);</script>
+    </head><body>
+    <div class="header">K.C MULTI-CUSTOM V19</div>
+    <div class="container">`;
 
     slots.forEach((idAtivo, index) => {
-        const m = motores[idAtivo] || { wins: 0, loss: 0, forca: 50, status: "CARREGANDO" };
-        html += `<div class="card ${m.operacaoAtiva ? 'trade' : ''}">
-            <h2>SLOT ${index + 1}</h2>
-            <div class="placar">${m.wins || 0}W - ${m.loss || 0}L</div>
-            <div class="info">Força: ${(m.forca || 50).toFixed(1)}% | ${m.operacaoAtiva ? '🔥 OPERANDO' : '🔍 ANALISANDO'}</div>
+        const m = motores[idAtivo] || { wins: 0, loss: 0, forca: 50, ultimoPreco: "---" };
+        html += `<div class="card ${m.operacaoAtiva ? 'active' : ''}">
+            <div class="label">SLOT ${index + 1} • ${m.operacaoAtiva ? '🔥 TRADE ON' : '🔍 MONITORANDO'}</div>
             <form action="/" method="get">
                 <input type="hidden" name="slotIdx" value="${index}">
                 <select name="ativoId" onchange="this.form.submit()">
                     ${LISTA_ATIVOS.map(a => `<option value="${a.id}" ${a.id === idAtivo ? 'selected' : ''}>${a.nome}</option>`).join('')}
                 </select>
             </form>
+            <div class="price">${m.ultimoPreco || '0.0000'}</div>
+            <div style="font-size: 11px; color: #888;">FORÇA DO SINAL: ${m.forca.toFixed(1)}%</div>
+            <div class="bar-bg"><div class="bar-fill" style="width: ${m.forca}%"></div></div>
+            <div class="stats">
+                <span>W: <b class="win">${m.wins}</b></span>
+                <span>L: <b class="loss">${m.loss}</b></span>
+                <span>GALE: <b>${m.galeAtual || 0}</b></span>
+            </div>
         </div>`;
     });
 
-    html += `</body></html>`;
+    html += `</div></body></html>`;
     res.send(html);
 });
 
+// --- SUA LÓGICA DE MOTORES E PROCESSAMENTO ---
 function inicializarMotores() {
     slots.forEach(id => {
         if (id !== "NONE" && !motores[id]) {
@@ -120,7 +131,7 @@ function inicializarMotores() {
                 nome: info ? info.nome : id, wins: 0, loss: 0, 
                 aberturaVelaAtual: 0, corpoVelaAnterior: 0, fechamentoVelaAnterior: 0,
                 forca: 50, operacaoAtiva: null, galeAtual: 0, tempoOp: 0, precoEntrada: 0,
-                buscandoTaxa: false, sinalPendente: null
+                buscandoTaxa: false, sinalPendente: null, ultimoPreco: 0
             };
         }
     });
@@ -163,11 +174,14 @@ function registrarResultado(ativoNome, resultado, foiGale) {
 
 function processarTick(id, preco) {
     const m = motores[id]; if (!m) return;
+    m.ultimoPreco = preco;
     const segs = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"})).getSeconds();
+    
     if (m.aberturaVelaAtual > 0) {
         m.forca = 50 + ((preco - m.aberturaVelaAtual) / (m.aberturaVelaAtual * 0.0002) * 20);
         m.forca = Math.min(98, Math.max(2, m.forca));
     }
+    
     if (!m.operacaoAtiva && !m.buscandoTaxa) {
         if (segs === 0 && m.aberturaVelaAtual !== preco) {
             let dirPrevista = m.forca >= 50 ? "🟢 COMPRA" : "🔴 VENDA";
@@ -186,6 +200,7 @@ function processarTick(id, preco) {
             m.fechamentoVelaAnterior = preco; m.aberturaVelaAtual = preco;
         }
     }
+    
     if (m.buscandoTaxa && segs < 30) {
         const dist = m.corpoVelaAnterior * (PCT_RECUO_TAXA / 100);
         let bateuTaxa = (m.sinalPendente === "CALL" && preco <= (m.fechamentoVelaAnterior - dist)) || 
@@ -195,10 +210,12 @@ function processarTick(id, preco) {
             enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n👉 CLIQUE AGORA\n💎 Ativo: ${m.nome}\n🎯 Direção: ${m.operacaoAtiva === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n⏰ Início ás: ${getHoraBR()}\n🏁 Fim ás: ${getHoraBR(60)}`);
         }
     }
+    
     if (segs >= 30 && m.buscandoTaxa) {
         enviarTelegram(`⚠️ *OPERAÇÃO ABORTADA*\n💎 Ativo: ${m.nome}\nPreço não atingiu a taxa.`);
         m.buscandoTaxa = false; m.sinalPendente = null;
     }
+    
     if (m.tempoOp > 0) {
         m.tempoOp--;
         if (m.tempoOp <= 0) {
@@ -219,6 +236,7 @@ function processarTick(id, preco) {
     }
 }
 
+// RELATÓRIOS
 setInterval(() => {
     if (statsDiario.analises === 0) return;
     let ef = (((statsDiario.winDireto + statsDiario.winGale) / statsDiario.analises) * 100).toFixed(1);
