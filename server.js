@@ -146,7 +146,7 @@ function processarTick(id, preco) {
     }
 
     if (segs >= 5 && segs < 10 && !m.analiseEnviada && !m.operacaoAtiva) {
-        enviarTelegram(`🔍 *ANALISANDO POSSÍVEL ENTRADA*\n💎 Ativo: ${m.nome}\n⏰ Entrada: *${getHoraBR(60-segs).slice(0,5)}:00*`);
+        enviarTelegram(`🔍 *AGUARDANDO CONFIRMAÇÃO DA ENTRADA*\n💎 Ativo: ${m.nome}\n⏰ Possível Entrada ás: *${getHoraBR(60-segs).slice(0,5)}:00*`);
         m.analiseEnviada = true;
     }
 
@@ -166,7 +166,7 @@ function processarTick(id, preco) {
                     (m.sinalPendente === "PUT" && preco >= (m.fechamentoVelaAnterior + dist));
         if (bateu) {
             m.buscandoTaxa = false; m.operacaoAtiva = m.sinalPendente; m.precoEntrada = preco; m.tempoOp = 60;
-            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 Ativo: ${m.nome}\n🎯 Sinal: ${m.operacaoAtiva === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n⏰ Início: ${getHoraBR()}\n🏁 Fim: ${getHoraBR(60)}`);
+            enviarTelegram(`🚀 *ENTRADA CONFIRMADA*\n💎 Ativo: ${m.nome}\n🎯 Sinal: ${m.operacaoAtiva === "CALL" ? "🟢 COMPRA" : "🔴 VENDA"}\n⏰ Início ás: ${getHoraBR()}\n🏁 Fim ás: ${getHoraBR(60)}`);
         }
     }
 
